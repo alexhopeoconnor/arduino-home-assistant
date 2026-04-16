@@ -42,6 +42,14 @@ HAHVAC::HAHVAC(
     _modeCallback(nullptr),
     _targetTemperature(),
     _targetTemperatureCallback(nullptr)
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+    , _auxStdCallback(),
+    _powerStdCallback(),
+    _fanModeStdCallback(),
+    _swingModeStdCallback(),
+    _modeStdCallback(),
+    _targetTemperatureStdCallback()
+#endif
 {
     if (_features & FanFeature) {
         _fanModesSerializer = new HASerializerArray(4);
@@ -652,87 +660,207 @@ void HAHVAC::handleAuxStateCommand(const uint8_t* cmd, const uint16_t length)
 {
     (void)cmd;
 
-    if (!_auxCallback) {
+    const bool hasAuxCallback =
+        _auxCallback
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        || static_cast<bool>(_auxStdCallback)
+#endif
+    ;
+
+    if (!hasAuxCallback) {
         return;
     }
 
     bool state = length == strlen_P(HAStateOn);
-    _auxCallback(state, this);
+    if (_auxCallback) {
+        _auxCallback(state, this);
+    }
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+    if (_auxStdCallback) {
+        _auxStdCallback(state, this);
+    }
+#endif
 }
 
 void HAHVAC::handlePowerCommand(const uint8_t* cmd, const uint16_t length)
 {
     (void)cmd;
 
-    if (!_powerCallback) {
+    const bool hasPowerCallback =
+        _powerCallback
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        || static_cast<bool>(_powerStdCallback)
+#endif
+    ;
+
+    if (!hasPowerCallback) {
         return;
     }
 
     bool state = length == strlen_P(HAStateOn);
-    _powerCallback(state, this);
+    if (_powerCallback) {
+        _powerCallback(state, this);
+    }
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+    if (_powerStdCallback) {
+        _powerStdCallback(state, this);
+    }
+#endif
 }
 
 void HAHVAC::handleFanModeCommand(const uint8_t* cmd, const uint16_t length)
 {
-    if (!_fanModeCallback) {
+    const bool hasFanModeCallback =
+        _fanModeCallback
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        || static_cast<bool>(_fanModeStdCallback)
+#endif
+    ;
+
+    if (!hasFanModeCallback) {
         return;
     }
 
+    FanMode mode = UnknownFanMode;
+    bool handled = false;
     if (memcmp_P(cmd, HAFanModeAuto, length) == 0) {
-        _fanModeCallback(AutoFanMode, this);
+        mode = AutoFanMode;
+        handled = true;
     } else if (memcmp_P(cmd, HAFanModeLow, length) == 0) {
-        _fanModeCallback(LowFanMode, this);
+        mode = LowFanMode;
+        handled = true;
     } else if (memcmp_P(cmd, HAFanModeMedium, length) == 0) {
-        _fanModeCallback(MediumFanMode, this);
+        mode = MediumFanMode;
+        handled = true;
     } else if (memcmp_P(cmd, HAFanModeHigh, length) == 0) {
-        _fanModeCallback(HighFanMode, this);
+        mode = HighFanMode;
+        handled = true;
     }
+
+    if (!handled) {
+        return;
+    }
+
+    if (_fanModeCallback) {
+        _fanModeCallback(mode, this);
+    }
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+    if (_fanModeStdCallback) {
+        _fanModeStdCallback(mode, this);
+    }
+#endif
 }
 
 void HAHVAC::handleSwingModeCommand(const uint8_t* cmd, const uint16_t length)
 {
-    if (!_swingModeCallback) {
+    const bool hasSwingModeCallback =
+        _swingModeCallback
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        || static_cast<bool>(_swingModeStdCallback)
+#endif
+    ;
+
+    if (!hasSwingModeCallback) {
         return;
     }
 
+    SwingMode mode = UnknownSwingMode;
+    bool handled = false;
     if (memcmp_P(cmd, HASwingModeOn, length) == 0) {
-        _swingModeCallback(OnSwingMode, this);
+        mode = OnSwingMode;
+        handled = true;
     } else if (memcmp_P(cmd, HASwingModeOff, length) == 0) {
-        _swingModeCallback(OffSwingMode, this);
+        mode = OffSwingMode;
+        handled = true;
     }
+
+    if (!handled) {
+        return;
+    }
+
+    if (_swingModeCallback) {
+        _swingModeCallback(mode, this);
+    }
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+    if (_swingModeStdCallback) {
+        _swingModeStdCallback(mode, this);
+    }
+#endif
 }
 
 void HAHVAC::handleModeCommand(const uint8_t* cmd, const uint16_t length)
 {
-    if (!_modeCallback) {
+    const bool hasModeCallback =
+        _modeCallback
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        || static_cast<bool>(_modeStdCallback)
+#endif
+    ;
+
+    if (!hasModeCallback) {
         return;
     }
 
+    Mode mode = UnknownMode;
+    bool handled = false;
     if (memcmp_P(cmd, HAModeAuto, length) == 0) {
-        _modeCallback(AutoMode, this);
+        mode = AutoMode;
+        handled = true;
     } else if (memcmp_P(cmd, HAModeOff, length) == 0) {
-        _modeCallback(OffMode, this);
+        mode = OffMode;
+        handled = true;
     } else if (memcmp_P(cmd, HAModeCool, length) == 0) {
-        _modeCallback(CoolMode, this);
+        mode = CoolMode;
+        handled = true;
     } else if (memcmp_P(cmd, HAModeHeat, length) == 0) {
-        _modeCallback(HeatMode, this);
+        mode = HeatMode;
+        handled = true;
     }  else if (memcmp_P(cmd, HAModeDry, length) == 0) {
-        _modeCallback(DryMode, this);
+        mode = DryMode;
+        handled = true;
     }  else if (memcmp_P(cmd, HAModeFanOnly, length) == 0) {
-        _modeCallback(FanOnlyMode, this);
+        mode = FanOnlyMode;
+        handled = true;
     }
+
+    if (!handled) {
+        return;
+    }
+
+    if (_modeCallback) {
+        _modeCallback(mode, this);
+    }
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+    if (_modeStdCallback) {
+        _modeStdCallback(mode, this);
+    }
+#endif
 }
 
 void HAHVAC::handleTargetTemperatureCommand(const uint8_t* cmd, const uint16_t length)
 {
-    if (!_targetTemperatureCallback) {
+    const bool hasTargetTemperatureCallback =
+        _targetTemperatureCallback
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        || static_cast<bool>(_targetTemperatureStdCallback)
+#endif
+    ;
+
+    if (!hasTargetTemperatureCallback) {
         return;
     }
 
     HANumeric number = HANumeric::fromStr(cmd, length);
     if (number.isSet()) {
         number.setPrecision(_precision);
-        _targetTemperatureCallback(number, this);
+        if (_targetTemperatureCallback) {
+            _targetTemperatureCallback(number, this);
+        }
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        if (_targetTemperatureStdCallback) {
+            _targetTemperatureStdCallback(number, this);
+        }
+#endif
     }
 }
 

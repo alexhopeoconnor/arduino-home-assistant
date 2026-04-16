@@ -17,6 +17,10 @@ HAFan::HAFan(const char* uniqueId, const uint8_t features) :
     _currentSpeed(0),
     _stateCallback(nullptr),
     _speedCallback(nullptr)
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+    , _stateStdCallback(),
+    _speedStdCallback()
+#endif
 {
 
 }
@@ -171,23 +175,52 @@ void HAFan::handleStateCommand(const uint8_t* cmd, const uint16_t length)
 {
     (void)cmd;
 
-    if (!_stateCallback) {
+    const bool hasStateCallback =
+        _stateCallback
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        || static_cast<bool>(_stateStdCallback)
+#endif
+    ;
+
+    if (!hasStateCallback) {
         return;
     }
 
     bool state = length == strlen_P(HAStateOn);
-    _stateCallback(state, this);
+    if (_stateCallback) {
+        _stateCallback(state, this);
+    }
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+    if (_stateStdCallback) {
+        _stateStdCallback(state, this);
+    }
+#endif
 }
 
 void HAFan::handleSpeedCommand(const uint8_t* cmd, const uint16_t length)
 {
-    if (!_speedCallback) {
+    const bool hasSpeedCallback =
+        _speedCallback
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        || static_cast<bool>(_speedStdCallback)
+#endif
+    ;
+
+    if (!hasSpeedCallback) {
         return;
     }
 
     const HANumeric& number = HANumeric::fromStr(cmd, length);
     if (number.isUInt16()) {
-        _speedCallback(number.toUInt16(), this);
+        const uint16_t speed = number.toUInt16();
+        if (_speedCallback) {
+            _speedCallback(speed, this);
+        }
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        if (_speedStdCallback) {
+            _speedStdCallback(speed, this);
+        }
+#endif
     }
 }
 

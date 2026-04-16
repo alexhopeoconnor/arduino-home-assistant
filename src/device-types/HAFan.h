@@ -4,6 +4,10 @@
 #include "HABaseDeviceType.h"
 #include "../utils/HANumeric.h"
 
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+#include <functional>
+#endif
+
 #ifndef EX_ARDUINOHA_FAN
 
 #define HAFAN_STATE_CALLBACK(name) void (*name)(bool state, HAFan* sender)
@@ -156,7 +160,12 @@ public:
      * @note In non-optimistic mode, the state must be reported back to HA using the HAFan::setState method.
      */
     inline void onStateCommand(HAFAN_STATE_CALLBACK(callback))
-        { _stateCallback = callback; }
+    {
+        _stateCallback = callback;
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        _stateStdCallback = nullptr;
+#endif
+    }
 
     /**
      * Registers callback that will be called each time the speed command from HA is received.
@@ -166,7 +175,38 @@ public:
      * @note In non-optimistic mode, the speed must be reported back to HA using the HAFan::setSpeed method.
      */
     inline void onSpeedCommand(HAFAN_SPEED_CALLBACK(callback))
-        { _speedCallback = callback; }
+    {
+        _speedCallback = callback;
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        _speedStdCallback = nullptr;
+#endif
+    }
+
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+    /**
+     * Registers state callback using std::function.
+     * It allows passing capturing lambdas and std::bind expressions.
+     *
+     * @param callback
+     */
+    inline void onStateCommand(const std::function<void(bool, HAFan*)>& callback)
+    {
+        _stateCallback = nullptr;
+        _stateStdCallback = callback;
+    }
+
+    /**
+     * Registers speed callback using std::function.
+     * It allows passing capturing lambdas and std::bind expressions.
+     *
+     * @param callback
+     */
+    inline void onSpeedCommand(const std::function<void(uint16_t, HAFan*)>& callback)
+    {
+        _speedCallback = nullptr;
+        _speedStdCallback = callback;
+    }
+#endif
 
 protected:
     virtual void buildSerializer() override;
@@ -239,6 +279,14 @@ private:
 
     /// The callback that will be called when the speed command is received from the HA.
     HAFAN_SPEED_CALLBACK(_speedCallback);
+
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+    /// The std::function callback that will be called when the state command is received from the HA.
+    std::function<void(bool, HAFan*)> _stateStdCallback;
+
+    /// The std::function callback that will be called when the speed command is received from the HA.
+    std::function<void(uint16_t, HAFan*)> _speedStdCallback;
+#endif
 };
 
 #endif

@@ -3,6 +3,10 @@
 
 #include "HABaseDeviceType.h"
 
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+#include <functional>
+#endif
+
 #ifndef EX_ARDUINOHA_SCENE
 
 #define HASCENE_CALLBACK(name) void (*name)(HAScene* sender)
@@ -47,7 +51,26 @@ public:
      * @param callback
      */
     inline void onCommand(HASCENE_CALLBACK(callback))
-        { _commandCallback = callback; }
+    {
+        _commandCallback = callback;
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        _commandStdCallback = nullptr;
+#endif
+    }
+
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+    /**
+     * Registers callback using std::function.
+     * It allows passing capturing lambdas and std::bind expressions.
+     *
+     * @param callback
+     */
+    inline void onCommand(const std::function<void(HAScene*)>& callback)
+    {
+        _commandCallback = nullptr;
+        _commandStdCallback = callback;
+    }
+#endif
 
 protected:
     virtual void buildSerializer() override;
@@ -67,6 +90,11 @@ private:
 
     /// The command callback that will be called when scene is activated from the HA panel.
     HASCENE_CALLBACK(_commandCallback);
+
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+    /// The std::function callback that will be called when scene is activated from the HA panel.
+    std::function<void(HAScene*)> _commandStdCallback;
+#endif
 };
 
 #endif

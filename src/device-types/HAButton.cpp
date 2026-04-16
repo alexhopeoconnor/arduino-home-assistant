@@ -7,6 +7,7 @@
 HAButton::HAButton(const char* uniqueId) :
     HABaseDeviceType(AHATOFSTR(HAComponentButton), uniqueId),
     _class(nullptr),
+    _entityCategory(nullptr),
     _icon(nullptr),
     _retain(false),
     _commandCallback(nullptr)
@@ -20,11 +21,12 @@ void HAButton::buildSerializer()
         return;
     }
 
-    _serializer = new HASerializer(this, 9); // 9 - max properties nb
+    _serializer = new HASerializer(this, 10); // 10 - max properties nb
     _serializer->set(AHATOFSTR(HANameProperty), _name);
     _serializer->set(AHATOFSTR(HAObjectIdProperty), _objectId);
     _serializer->set(HASerializer::WithUniqueId);
     _serializer->set(AHATOFSTR(HADeviceClassProperty), _class);
+    _serializer->set(AHATOFSTR(HAStateEntityCategory), _entityCategory);
     _serializer->set(AHATOFSTR(HAIconProperty), _icon);
 
     // optional property
@@ -61,12 +63,26 @@ void HAButton::onMqttMessage(
     (void)payload;
     (void)length;
 
-    if (_commandCallback && HASerializer::compareDataTopics(
+    const bool hasCommandCallback =
+        _commandCallback
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        || static_cast<bool>(_commandStdCallback)
+#endif
+    ;
+
+    if (hasCommandCallback && HASerializer::compareDataTopics(
         topic,
         uniqueId(),
         AHATOFSTR(HACommandTopic)
     )) {
-        _commandCallback(this);
+        if (_commandCallback) {
+            _commandCallback(this);
+        }
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        if (_commandStdCallback) {
+            _commandStdCallback(this);
+        }
+#endif
     }
 }
 

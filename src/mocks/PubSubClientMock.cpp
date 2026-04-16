@@ -9,6 +9,7 @@ PubSubClientMock::PubSubClientMock() :
     _keepAlive(15),
     _bufferSize(256),
     _state(-1),
+    _connectCallsNb(0),
     _flushedMessagesNb(0),
     _subscriptions(nullptr),
     _subscriptionsNb(0),
@@ -56,6 +57,7 @@ bool PubSubClientMock::connect(
     (void)willQos;
     (void)cleanSession;
 
+    _connectCallsNb++;
     _connection.connected = true;
     _connection.id = id;
     _connection.user = user;

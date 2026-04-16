@@ -169,6 +169,26 @@ AHA_TEST(ButtonTest, device_class) {
     )
 }
 
+AHA_TEST(ButtonTest, entity_category_setter) {
+    prepareTest
+
+    HAButton button(testUniqueId);
+    button.setEntityCategory("diagnostic");
+
+    assertEntityConfig(
+        mock,
+        button,
+        (
+            "{"
+            "\"uniq_id\":\"uniqueButton\","
+            "\"ent_cat\":\"diagnostic\","
+            "\"dev\":{\"ids\":\"testDevice\"},"
+            "\"cmd_t\":\"testData/testDevice/uniqueButton/cmd_t\""
+            "}"
+        )
+    )
+}
+
 AHA_TEST(ButtonTest, icon_setter) {
     prepareTest
 

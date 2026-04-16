@@ -16,6 +16,9 @@ HACover::HACover(const char* uniqueId, const Features features) :
     _retain(false),
     _optimistic(false),
     _commandCallback(nullptr)
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+    , _commandStdCallback()
+#endif
 {
 
 }
@@ -168,17 +171,42 @@ bool HACover::publishPosition(int16_t position)
 
 void HACover::handleCommand(const uint8_t* cmd, const uint16_t length)
 {
-    if (!_commandCallback) {
+    const bool hasCommandCallback =
+        _commandCallback
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        || static_cast<bool>(_commandStdCallback)
+#endif
+    ;
+
+    if (!hasCommandCallback) {
         return;
     }
 
+    CoverCommand command;
+    bool handled = false;
     if (memcmp_P(cmd, HACloseCommand, length) == 0) {
-        _commandCallback(CommandClose, this);
+        command = CommandClose;
+        handled = true;
     } else if (memcmp_P(cmd, HAOpenCommand, length) == 0) {
-        _commandCallback(CommandOpen, this);
+        command = CommandOpen;
+        handled = true;
     } else if (memcmp_P(cmd, HAStopCommand, length) == 0) {
-        _commandCallback(CommandStop, this);
+        command = CommandStop;
+        handled = true;
     }
+
+    if (!handled) {
+        return;
+    }
+
+    if (_commandCallback) {
+        _commandCallback(command, this);
+    }
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+    if (_commandStdCallback) {
+        _commandStdCallback(command, this);
+    }
+#endif
 }
 
 #endif

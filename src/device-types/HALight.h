@@ -4,6 +4,10 @@
 #include "HABaseDeviceType.h"
 #include "../utils/HANumeric.h"
 
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+#include <functional>
+#endif
+
 #ifndef EX_ARDUINOHA_LIGHT
 
 #define HALIGHT_STATE_CALLBACK(name) void (*name)(bool state, HALight* sender)
@@ -265,7 +269,12 @@ public:
      * @note In non-optimistic mode, the state must be reported back to HA using the HALight::setState method.
      */
     inline void onStateCommand(HALIGHT_STATE_CALLBACK(callback))
-        { _stateCallback = callback; }
+    {
+        _stateCallback = callback;
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        _stateStdCallback = nullptr;
+#endif
+    }
 
     /**
      * Registers callback that will be called each time the brightness command from HA is received.
@@ -275,7 +284,12 @@ public:
      * @note In non-optimistic mode, the brightness must be reported back to HA using the HALight::setBrightness method.
      */
     inline void onBrightnessCommand(HALIGHT_BRIGHTNESS_CALLBACK(callback))
-        { _brightnessCallback = callback; }
+    {
+        _brightnessCallback = callback;
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        _brightnessStdCallback = nullptr;
+#endif
+    }
 
     /**
      * Registers callback that will be called each time the color temperature command from HA is received.
@@ -285,7 +299,12 @@ public:
      * @note In non-optimistic mode, the color temperature must be reported back to HA using the HALight::setColorTemperature method.
      */
     inline void onColorTemperatureCommand(HALIGHT_COLOR_TEMP_CALLBACK(callback))
-        { _colorTemperatureCallback = callback; }
+    {
+        _colorTemperatureCallback = callback;
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        _colorTemperatureStdCallback = nullptr;
+#endif
+    }
 
     /**
      * Registers callback that will be called each time the RGB color command from HA is received.
@@ -295,7 +314,62 @@ public:
      * @note In non-optimistic mode, the color must be reported back to HA using the HALight::setRGBColor method.
      */
     inline void onRGBColorCommand(HALIGHT_RGB_COLOR_CALLBACK(callback))
-        { _rgbColorCallback = callback; }
+    {
+        _rgbColorCallback = callback;
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        _rgbColorStdCallback = nullptr;
+#endif
+    }
+
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+    /**
+     * Registers state callback using std::function.
+     * It allows passing capturing lambdas and std::bind expressions.
+     *
+     * @param callback
+     */
+    inline void onStateCommand(const std::function<void(bool, HALight*)>& callback)
+    {
+        _stateCallback = nullptr;
+        _stateStdCallback = callback;
+    }
+
+    /**
+     * Registers brightness callback using std::function.
+     * It allows passing capturing lambdas and std::bind expressions.
+     *
+     * @param callback
+     */
+    inline void onBrightnessCommand(const std::function<void(uint8_t, HALight*)>& callback)
+    {
+        _brightnessCallback = nullptr;
+        _brightnessStdCallback = callback;
+    }
+
+    /**
+     * Registers color temperature callback using std::function.
+     * It allows passing capturing lambdas and std::bind expressions.
+     *
+     * @param callback
+     */
+    inline void onColorTemperatureCommand(const std::function<void(uint16_t, HALight*)>& callback)
+    {
+        _colorTemperatureCallback = nullptr;
+        _colorTemperatureStdCallback = callback;
+    }
+
+    /**
+     * Registers RGB color callback using std::function.
+     * It allows passing capturing lambdas and std::bind expressions.
+     *
+     * @param callback
+     */
+    inline void onRGBColorCommand(const std::function<void(HALight::RGBColor, HALight*)>& callback)
+    {
+        _rgbColorCallback = nullptr;
+        _rgbColorStdCallback = callback;
+    }
+#endif
 
 protected:
     virtual void buildSerializer() override;
@@ -415,6 +489,20 @@ private:
 
     /// The callback that will be called when the RGB command is received from the HA.
     HALIGHT_RGB_COLOR_CALLBACK(_rgbColorCallback);
+
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+    /// The std::function callback that will be called when the state command is received from the HA.
+    std::function<void(bool, HALight*)> _stateStdCallback;
+
+    /// The std::function callback that will be called when the brightness command is received from the HA.
+    std::function<void(uint8_t, HALight*)> _brightnessStdCallback;
+
+    /// The std::function callback that will be called when the color temperature command is received from the HA.
+    std::function<void(uint16_t, HALight*)> _colorTemperatureStdCallback;
+
+    /// The std::function callback that will be called when the RGB command is received from the HA.
+    std::function<void(HALight::RGBColor, HALight*)> _rgbColorStdCallback;
+#endif
 };
 
 #endif

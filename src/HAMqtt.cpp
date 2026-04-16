@@ -20,6 +20,7 @@
     _username(nullptr), \
     _password(nullptr), \
     _lastConnectionAttemptAt(0), \
+    _reconnectInterval(DefaultReconnectInterval), \
     _devicesTypesNb(0), \
     _maxDevicesTypesNb(maxDevicesTypesNb), \
     _devicesTypes(new HABaseDeviceType*[maxDevicesTypesNb]), \
@@ -205,6 +206,13 @@ bool HAMqtt::setBufferSize(uint16_t size)
     return _mqtt->setBufferSize(size);
 }
 
+void HAMqtt::setReconnectInterval(uint16_t interval)
+{
+    if (interval > 0) {
+        _reconnectInterval = interval;
+    }
+}
+
 void HAMqtt::addDeviceType(HABaseDeviceType* deviceType)
 {
     if (_devicesTypesNb + 1 > _maxDevicesTypesNb) {
@@ -291,7 +299,7 @@ void HAMqtt::processMessage(const char* topic, const uint8_t* payload, uint16_t 
 void HAMqtt::connectToServer()
 {
     if (_lastConnectionAttemptAt > 0 &&
-            (millis() - _lastConnectionAttemptAt) < ReconnectInterval) {
+            (millis() - _lastConnectionAttemptAt) < _reconnectInterval) {
         return;
     }
 

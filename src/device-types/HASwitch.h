@@ -3,6 +3,10 @@
 
 #include "HABaseDeviceType.h"
 
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+#include <functional>
+#endif
+
 #ifndef EX_ARDUINOHA_SWITCH
 
 #define HASWITCH_CALLBACK(name) void (*name)(bool state, HASwitch* sender)
@@ -107,7 +111,26 @@ public:
      * @note In non-optimistic mode, the state must be reported back to HA using the HASwitch::setState method.
      */
     inline void onCommand(HASWITCH_CALLBACK(callback))
-        { _commandCallback = callback; }
+    {
+        _commandCallback = callback;
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        _commandStdCallback = nullptr;
+#endif
+    }
+
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+    /**
+     * Registers callback using std::function.
+     * It allows passing capturing lambdas and std::bind expressions.
+     *
+     * @param callback
+     */
+    inline void onCommand(const std::function<void(bool, HASwitch*)>& callback)
+    {
+        _commandCallback = nullptr;
+        _commandStdCallback = callback;
+    }
+#endif
 
 protected:
     virtual void buildSerializer() override;
@@ -144,6 +167,11 @@ private:
 
     /// The callback that will be called when switch command is received from the HA.
     HASWITCH_CALLBACK(_commandCallback);
+
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+    /// The std::function callback that will be called when switch command is received from the HA.
+    std::function<void(bool, HASwitch*)> _commandStdCallback;
+#endif
 };
 
 #endif

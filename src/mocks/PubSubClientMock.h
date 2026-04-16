@@ -145,6 +145,9 @@ public:
     inline int16_t state() const
         { return _state; }
 
+    inline uint16_t getConnectCallsNb() const
+        { return _connectCallsNb; }
+
     inline uint8_t getFlushedMessagesNb() const
         { return _flushedMessagesNb; }
 
@@ -175,6 +178,7 @@ private:
     uint16_t _keepAlive;
     uint16_t _bufferSize;
     int16_t _state;
+    uint16_t _connectCallsNb;
     uint8_t _flushedMessagesNb;
     MqttSubscription** _subscriptions;
     uint8_t _subscriptionsNb;

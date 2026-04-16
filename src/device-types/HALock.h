@@ -3,6 +3,10 @@
 
 #include "HABaseDeviceType.h"
 
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+#include <functional>
+#endif
+
 #ifndef EX_ARDUINOHA_LOCK
 
 #define HALOCK_CALLBACK(name) void (*name)(LockCommand command, HALock* sender)
@@ -100,7 +104,26 @@ public:
      * @param callback
      */
     inline void onCommand(HALOCK_CALLBACK(callback))
-        { _commandCallback = callback; }
+    {
+        _commandCallback = callback;
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        _commandStdCallback = nullptr;
+#endif
+    }
+
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+    /**
+     * Registers callback using std::function.
+     * It allows passing capturing lambdas and std::bind expressions.
+     *
+     * @param callback
+     */
+    inline void onCommand(const std::function<void(LockCommand, HALock*)>& callback)
+    {
+        _commandCallback = nullptr;
+        _commandStdCallback = callback;
+    }
+#endif
 
 protected:
     virtual void buildSerializer() override;
@@ -142,6 +165,11 @@ private:
 
     /// The callback that will be called when lock/unlock/open command is received from the HA.
     HALOCK_CALLBACK(_commandCallback);
+
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+    /// The std::function callback that will be called when lock/unlock/open command is received from the HA.
+    std::function<void(LockCommand, HALock*)> _commandStdCallback;
+#endif
 };
 
 #endif

@@ -3,6 +3,10 @@
 
 #include "HABaseDeviceType.h"
 
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+#include <functional>
+#endif
+
 #ifndef EX_ARDUINOHA_SELECT
 
 class HASerializerArray;
@@ -109,7 +113,26 @@ public:
      * @note In non-optimistic mode, the selected option must be reported back to HA using the HASelect::setState method.
      */
     inline void onCommand(HASELECT_CALLBACK(callback))
-        { _commandCallback = callback; }
+    {
+        _commandCallback = callback;
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        _commandStdCallback = nullptr;
+#endif
+    }
+
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+    /**
+     * Registers callback using std::function.
+     * It allows passing capturing lambdas and std::bind expressions.
+     *
+     * @param callback
+     */
+    inline void onCommand(const std::function<void(int8_t, HASelect*)>& callback)
+    {
+        _commandCallback = nullptr;
+        _commandStdCallback = callback;
+    }
+#endif
 
 #ifdef ARDUINOHA_TEST
     inline HASerializerArray* getOptions() const
@@ -156,6 +179,11 @@ private:
 
     /// The command callback that will be called when option is changed via the HA panel.
     HASELECT_CALLBACK(_commandCallback);
+
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+    /// The std::function callback that will be called when option is changed via the HA panel.
+    std::function<void(int8_t, HASelect*)> _commandStdCallback;
+#endif
 };
 
 #endif

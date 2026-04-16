@@ -20,6 +20,14 @@
 // #define EX_ARDUINOHA_SENSOR
 // #define EX_ARDUINOHA_SWITCH
 // #define EX_ARDUINOHA_TAG_SCANNER
+// #define EX_ARDUINOHA_TEXT
+
+// Enables std::function overloads for entity callbacks.
+// Useful for capturing lambdas, but may increase binary size on constrained boards.
+// Define ARDUINOHA_DISABLE_STDFUNCTION to opt out.
+#if !defined(ARDUINOHA_DISABLE_STDFUNCTION)
+    #define ARDUINOHA_ENABLE_STDFUNCTION
+#endif
 
 #if defined(ARDUINOHA_DEBUG)
     #include <Arduino.h>

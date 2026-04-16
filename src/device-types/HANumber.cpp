@@ -8,6 +8,7 @@ HANumber::HANumber(const char* uniqueId, const NumberPrecision precision) :
     HABaseDeviceType(AHATOFSTR(HAComponentNumber), uniqueId),
     _precision(precision),
     _class(nullptr),
+    _entityCategory(nullptr),
     _icon(nullptr),
     _retain(false),
     _optimistic(false),
@@ -42,11 +43,12 @@ void HANumber::buildSerializer()
         return;
     }
 
-    _serializer = new HASerializer(this, 16); // 16 - max properties nb
+    _serializer = new HASerializer(this, 17); // 17 - max properties nb
     _serializer->set(AHATOFSTR(HANameProperty), _name);
     _serializer->set(AHATOFSTR(HAObjectIdProperty), _objectId);
     _serializer->set(HASerializer::WithUniqueId);
     _serializer->set(AHATOFSTR(HADeviceClassProperty), _class);
+    _serializer->set(AHATOFSTR(HAStateEntityCategory), _entityCategory);
     _serializer->set(AHATOFSTR(HAIconProperty), _icon);
     _serializer->set(AHATOFSTR(HAUnitOfMeasurementProperty), _unitOfMeasurement);
     _serializer->set(
@@ -165,17 +167,38 @@ bool HANumber::publishState(const HANumeric& state)
 
 void HANumber::handleCommand(const uint8_t* cmd, const uint16_t length)
 {
-    if (!_commandCallback) {
+    const bool hasCommandCallback =
+        _commandCallback
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        || static_cast<bool>(_commandStdCallback)
+#endif
+    ;
+
+    if (!hasCommandCallback) {
         return;
     }
 
     if (memcmp_P(cmd, HAStateNone, length) == 0) {
-        _commandCallback(HANumeric(), this);
+        if (_commandCallback) {
+            _commandCallback(HANumeric(), this);
+        }
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        if (_commandStdCallback) {
+            _commandStdCallback(HANumeric(), this);
+        }
+#endif
     } else {
         HANumeric number = HANumeric::fromStr(cmd, length);
         if (number.isSet()) {
             number.setPrecision(_precision);
-            _commandCallback(number, this);
+            if (_commandCallback) {
+                _commandCallback(number, this);
+            }
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+            if (_commandStdCallback) {
+                _commandStdCallback(number, this);
+            }
+#endif
         }
     }
 }

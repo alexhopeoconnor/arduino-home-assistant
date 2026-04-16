@@ -11,6 +11,9 @@ HALock::HALock(const char* uniqueId) :
     _optimistic(false),
     _currentState(StateUnknown),
     _commandCallback(nullptr)
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+    , _commandStdCallback()
+#endif
 {
 
 }
@@ -109,17 +112,42 @@ bool HALock::publishState(const LockState state)
 
 void HALock::handleCommand(const uint8_t* cmd, const uint16_t length)
 {
-    if (!_commandCallback) {
+    const bool hasCommandCallback =
+        _commandCallback
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        || static_cast<bool>(_commandStdCallback)
+#endif
+    ;
+
+    if (!hasCommandCallback) {
         return;
     }
 
+    LockCommand command;
+    bool handled = false;
     if (memcmp_P(cmd, HALockCommand, length) == 0) {
-        _commandCallback(CommandLock, this);
+        command = CommandLock;
+        handled = true;
     } else if (memcmp_P(cmd, HAUnlockCommand, length) == 0) {
-        _commandCallback(CommandUnlock, this);
+        command = CommandUnlock;
+        handled = true;
     } else if (memcmp_P(cmd, HAOpenCommand, length) == 0) {
-        _commandCallback(CommandOpen, this);
+        command = CommandOpen;
+        handled = true;
     }
+
+    if (!handled) {
+        return;
+    }
+
+    if (_commandCallback) {
+        _commandCallback(command, this);
+    }
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+    if (_commandStdCallback) {
+        _commandStdCallback(command, this);
+    }
+#endif
 }
 
 #endif

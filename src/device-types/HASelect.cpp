@@ -12,6 +12,9 @@ HASelect::HASelect(const char* uniqueId) :
     _retain(false),
     _optimistic(false),
     _commandCallback(nullptr)
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+    , _commandStdCallback()
+#endif
 {
 
 }
@@ -151,7 +154,14 @@ void HASelect::onMqttMessage(
     const uint16_t length
 )
 {
-    if (_commandCallback && HASerializer::compareDataTopics(
+    const bool hasCommandCallback =
+        _commandCallback
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        || static_cast<bool>(_commandStdCallback)
+#endif
+    ;
+
+    if (hasCommandCallback && HASerializer::compareDataTopics(
         topic,
         uniqueId(),
         AHATOFSTR(HACommandTopic)
@@ -161,7 +171,14 @@ void HASelect::onMqttMessage(
 
         for (uint8_t i = 0; i < optionsNb; i++) {
             if (memcmp(payload, options[i], length) == 0) {
-                _commandCallback(i, this);
+                if (_commandCallback) {
+                    _commandCallback(i, this);
+                }
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+                if (_commandStdCallback) {
+                    _commandStdCallback(i, this);
+                }
+#endif
                 return;
             }
         }

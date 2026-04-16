@@ -1,24 +1,38 @@
-#include "HASwitch.h"
-#ifndef EX_ARDUINOHA_SWITCH
+#include "HAText.h"
+#ifndef EX_ARDUINOHA_TEXT
 
 #include "../HAMqtt.h"
 #include "../utils/HASerializer.h"
 
-HASwitch::HASwitch(const char* uniqueId) :
-    HABaseDeviceType(AHATOFSTR(HAComponentSwitch), uniqueId),
-    _class(nullptr),
+HAText::HAText(const char* uniqueId) :
+    HABaseDeviceType(AHATOFSTR(HAComponentText), uniqueId),
     _icon(nullptr),
     _retain(false),
     _optimistic(false),
-    _currentState(false),
+    _mode(ModeText),
+    _min(),
+    _max(),
+    _pattern(nullptr),
+    _currentState(nullptr),
     _commandCallback(nullptr)
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+    , _commandStdCallback()
+#endif
 {
 
 }
 
-bool HASwitch::setState(const bool state, const bool force)
+bool HAText::setState(const char* state, const bool force)
 {
-    if (!force && state == _currentState) {
+    if (!state) {
+        return false;
+    }
+
+    if (
+        !force &&
+        _currentState &&
+        strcmp(state, _currentState) == 0
+    ) {
         return true;
     }
 
@@ -30,20 +44,40 @@ bool HASwitch::setState(const bool state, const bool force)
     return false;
 }
 
-void HASwitch::buildSerializer()
+void HAText::buildSerializer()
 {
     if (_serializer || !uniqueId()) {
         return;
     }
 
-    _serializer = new HASerializer(this, 11); // 11 - max properties nb
+    _serializer = new HASerializer(this, 14); // 14 - max properties nb
     _serializer->set(AHATOFSTR(HANameProperty), _name);
     _serializer->set(AHATOFSTR(HAObjectIdProperty), _objectId);
     _serializer->set(HASerializer::WithUniqueId);
-    _serializer->set(AHATOFSTR(HADeviceClassProperty), _class);
     _serializer->set(AHATOFSTR(HAIconProperty), _icon);
+    _serializer->set(
+        AHATOFSTR(HAModeProperty),
+        getModeProperty(),
+        HASerializer::ProgmemPropertyValue
+    );
+    _serializer->set(AHATOFSTR(HAPatternProperty), _pattern);
 
-    // optional property
+    if (_min.isSet()) {
+        _serializer->set(
+            AHATOFSTR(HAMinProperty),
+            &_min,
+            HASerializer::NumberPropertyType
+        );
+    }
+
+    if (_max.isSet()) {
+        _serializer->set(
+            AHATOFSTR(HAMaxProperty),
+            &_max,
+            HASerializer::NumberPropertyType
+        );
+    }
+
     if (_retain) {
         _serializer->set(
             AHATOFSTR(HARetainProperty),
@@ -66,7 +100,7 @@ void HASwitch::buildSerializer()
     _serializer->topic(AHATOFSTR(HACommandTopic));
 }
 
-void HASwitch::onMqttConnected()
+void HAText::onMqttConnected()
 {
     if (!uniqueId()) {
         return;
@@ -75,21 +109,19 @@ void HASwitch::onMqttConnected()
     publishConfig();
     publishAvailability();
 
-    if (!_retain) {
+    if (!_retain && _currentState) {
         publishState(_currentState);
     }
 
     subscribeTopic(uniqueId(), AHATOFSTR(HACommandTopic));
 }
 
-void HASwitch::onMqttMessage(
+void HAText::onMqttMessage(
     const char* topic,
     const uint8_t* payload,
     const uint16_t length
 )
 {
-    (void)payload;
-
     const bool hasCommandCallback =
         _commandCallback
 #if defined(ARDUINOHA_ENABLE_STDFUNCTION)
@@ -102,25 +134,34 @@ void HASwitch::onMqttMessage(
         uniqueId(),
         AHATOFSTR(HACommandTopic)
     )) {
-        bool state = length == strlen_P(HAStateOn);
+        char value[length + 1];
+        value[length] = 0;
+        memcpy(value, payload, length);
         if (_commandCallback) {
-            _commandCallback(state, this);
+            _commandCallback(value, this);
         }
 #if defined(ARDUINOHA_ENABLE_STDFUNCTION)
         if (_commandStdCallback) {
-            _commandStdCallback(state, this);
+            _commandStdCallback(value, this);
         }
 #endif
     }
 }
 
-bool HASwitch::publishState(const bool state)
+bool HAText::publishState(const char* state)
 {
     return publishOnDataTopic(
         AHATOFSTR(HAStateTopic),
-        AHATOFSTR(state ? HAStateOn : HAStateOff),
+        state,
         true
     );
+}
+
+const __FlashStringHelper* HAText::getModeProperty() const
+{
+    return _mode == ModePassword
+        ? AHATOFSTR(HAModePassword)
+        : nullptr;
 }
 
 #endif

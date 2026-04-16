@@ -377,6 +377,27 @@ AHA_TEST(NumberTest, device_class) {
     )
 }
 
+AHA_TEST(NumberTest, entity_category_setter) {
+    prepareTest
+
+    HANumber number(testUniqueId);
+    number.setEntityCategory("diagnostic");
+
+    assertEntityConfig(
+        mock,
+        number,
+        (
+            "{"
+            "\"uniq_id\":\"uniqueNumber\","
+            "\"ent_cat\":\"diagnostic\","
+            "\"dev\":{\"ids\":\"testDevice\"},"
+            "\"stat_t\":\"testData/testDevice/uniqueNumber/stat_t\","
+            "\"cmd_t\":\"testData/testDevice/uniqueNumber/cmd_t\""
+            "}"
+        )
+    )
+}
+
 AHA_TEST(NumberTest, icon_setter) {
     prepareTest
 

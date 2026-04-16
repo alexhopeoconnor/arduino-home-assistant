@@ -3,6 +3,10 @@
 
 #include "HABaseDeviceType.h"
 
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+#include <functional>
+#endif
+
 #ifndef EX_ARDUINOHA_BUTTON
 
 #define HABUTTON_CALLBACK(name) void (*name)(HAButton* sender)
@@ -33,6 +37,15 @@ public:
         { _class = deviceClass; }
 
     /**
+     * Sets the entity category for the button.
+     * See: https://www.home-assistant.io/integrations/button.mqtt/#entity_category
+     *
+     * @param entityCategory The category name.
+     */
+    inline void setEntityCategory(const char* entityCategory)
+        { _entityCategory = entityCategory; }
+
+    /**
      * Sets icon of the button.
      * Any icon from MaterialDesignIcons.com (for example: `mdi:home`).
      *
@@ -57,7 +70,26 @@ public:
      * @param callback
      */
     inline void onCommand(HABUTTON_CALLBACK(callback))
-        { _commandCallback = callback; }
+    {
+        _commandCallback = callback;
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        _commandStdCallback = nullptr;
+#endif
+    }
+
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+    /**
+     * Registers callback using std::function.
+     * It allows passing capturing lambdas and std::bind expressions.
+     *
+     * @param callback
+     */
+    inline void onCommand(const std::function<void(HAButton*)>& callback)
+    {
+        _commandCallback = nullptr;
+        _commandStdCallback = callback;
+    }
+#endif
 
 protected:
     virtual void buildSerializer() override;
@@ -72,6 +104,9 @@ private:
     /// The device class. It can be nullptr.
     const char* _class;
 
+    /// The entity category for the button. It can be nullptr.
+    const char* _entityCategory;
+
     /// The icon of the button. It can be nullptr.
     const char* _icon;
 
@@ -80,6 +115,11 @@ private:
 
     /// The command callback that will be called once clicking the button in HA panel.
     HABUTTON_CALLBACK(_commandCallback);
+
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+    /// The std::function command callback.
+    std::function<void(HAButton*)> _commandStdCallback;
+#endif
 };
 
 #endif

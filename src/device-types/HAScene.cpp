@@ -9,6 +9,9 @@ HAScene::HAScene(const char* uniqueId) :
     _icon(nullptr),
     _retain(false),
     _commandCallback(nullptr)
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+    , _commandStdCallback()
+#endif
 {
 
 }
@@ -65,12 +68,26 @@ void HAScene::onMqttMessage(
     (void)payload;
     (void)length;
 
-    if (_commandCallback && HASerializer::compareDataTopics(
+    const bool hasCommandCallback =
+        _commandCallback
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        || static_cast<bool>(_commandStdCallback)
+#endif
+    ;
+
+    if (hasCommandCallback && HASerializer::compareDataTopics(
         topic,
         uniqueId(),
         AHATOFSTR(HACommandTopic)
     )) {
-        _commandCallback(this);
+        if (_commandCallback) {
+            _commandCallback(this);
+        }
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        if (_commandStdCallback) {
+            _commandStdCallback(this);
+        }
+#endif
     }
 }
 

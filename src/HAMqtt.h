@@ -263,6 +263,20 @@ public:
     bool setBufferSize(uint16_t size);
 
     /**
+     * Sets minimal interval between MQTT reconnect attempts.
+     * By default it's 10000 milliseconds.
+     *
+     * @param interval Interval in milliseconds. Zero is ignored.
+     */
+    void setReconnectInterval(uint16_t interval);
+
+    /**
+     * Returns minimal interval between MQTT reconnect attempts.
+     */
+    inline uint16_t getReconnectInterval() const
+        { return _reconnectInterval; }
+
+    /**
      * Adds a new device's type to the MQTT.
      * Each time the connection with MQTT broker is acquired, the HAMqtt class
      * calls "onMqttConnected" method in all devices' types instances.
@@ -378,8 +392,8 @@ public:
 #endif
 
 private:
-    /// Interval between MQTT reconnects (milliseconds).
-    static const uint16_t ReconnectInterval = 10000;
+    /// Default interval between MQTT reconnect attempts (milliseconds).
+    static const uint16_t DefaultReconnectInterval = 10000;
 
     /// Living instance of the HAMqtt class. It can be nullptr.
     static HAMqtt* _instance;
@@ -439,6 +453,9 @@ private:
 
     /// Time of the last connection attemps (milliseconds since boot).
     uint32_t _lastConnectionAttemptAt;
+
+    /// Interval between MQTT reconnect attempts (milliseconds).
+    uint16_t _reconnectInterval;
 
     /// The amount of registered devices types.
     uint8_t _devicesTypesNb;

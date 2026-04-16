@@ -4,6 +4,10 @@
 #include "HABaseDeviceType.h"
 #include "../utils/HANumeric.h"
 
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+#include <functional>
+#endif
+
 #ifndef EX_ARDUINOHA_HVAC
 
 #define _SET_CURRENT_TEMPERATURE_OVERLOAD(type) \
@@ -447,7 +451,12 @@ public:
      * @note The aux state must be reported back to HA using the HAHVAC::setAuxState method.
      */
     inline void onAuxStateCommand(HAHVAC_CALLBACK_BOOL(callback))
-        { _auxCallback = callback; }
+    {
+        _auxCallback = callback;
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        _auxStdCallback = nullptr;
+#endif
+    }
 
     /**
      * Registers callback that will be called each time the power command from HA is received.
@@ -456,7 +465,12 @@ public:
      * @param callback
      */
     inline void onPowerCommand(HAHVAC_CALLBACK_BOOL(callback))
-        { _powerCallback = callback; }
+    {
+        _powerCallback = callback;
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        _powerStdCallback = nullptr;
+#endif
+    }
 
     /**
      * Registers callback that will be called each time the fan mode command from HA is received.
@@ -466,7 +480,12 @@ public:
      * @note The fan mode must be reported back to HA using the HAHVAC::setFanMode method.
      */
     inline void onFanModeCommand(HAHVAC_CALLBACK_FAN_MODE(callback))
-        { _fanModeCallback = callback; }
+    {
+        _fanModeCallback = callback;
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        _fanModeStdCallback = nullptr;
+#endif
+    }
 
     /**
      * Registers callback that will be called each time the swing mode command from HA is received.
@@ -476,7 +495,12 @@ public:
      * @note The swing mode must be reported back to HA using the HAHVAC::setSwingMode method.
      */
     inline void onSwingModeCommand(HAHVAC_CALLBACK_SWING_MODE(callback))
-        { _swingModeCallback = callback; }
+    {
+        _swingModeCallback = callback;
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        _swingModeStdCallback = nullptr;
+#endif
+    }
 
     /**
      * Registers callback that will be called each time the HVAC mode command from HA is received.
@@ -486,7 +510,12 @@ public:
      * @note The mode must be reported back to HA using the HAHVAC::setMode method.
      */
     inline void onModeCommand(HAHVAC_CALLBACK_MODE(callback))
-        { _modeCallback = callback; }
+    {
+        _modeCallback = callback;
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        _modeStdCallback = nullptr;
+#endif
+    }
 
     /**
      * Registers callback that will be called each time the target temperature is set via HA panel.
@@ -496,7 +525,74 @@ public:
      * @note The target temperature must be reported back to HA using the HAHVAC::setTargetTemperature method.
      */
     inline void onTargetTemperatureCommand(HAHVAC_CALLBACK_TARGET_TEMP(callback))
-        { _targetTemperatureCallback = callback; }
+    {
+        _targetTemperatureCallback = callback;
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        _targetTemperatureStdCallback = nullptr;
+#endif
+    }
+
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+    /**
+     * Registers aux state callback using std::function.
+     * It allows passing capturing lambdas and std::bind expressions.
+     */
+    inline void onAuxStateCommand(const std::function<void(bool, HAHVAC*)>& callback)
+    {
+        _auxCallback = nullptr;
+        _auxStdCallback = callback;
+    }
+
+    /**
+     * Registers power callback using std::function.
+     * It allows passing capturing lambdas and std::bind expressions.
+     */
+    inline void onPowerCommand(const std::function<void(bool, HAHVAC*)>& callback)
+    {
+        _powerCallback = nullptr;
+        _powerStdCallback = callback;
+    }
+
+    /**
+     * Registers fan mode callback using std::function.
+     * It allows passing capturing lambdas and std::bind expressions.
+     */
+    inline void onFanModeCommand(const std::function<void(FanMode, HAHVAC*)>& callback)
+    {
+        _fanModeCallback = nullptr;
+        _fanModeStdCallback = callback;
+    }
+
+    /**
+     * Registers swing mode callback using std::function.
+     * It allows passing capturing lambdas and std::bind expressions.
+     */
+    inline void onSwingModeCommand(const std::function<void(SwingMode, HAHVAC*)>& callback)
+    {
+        _swingModeCallback = nullptr;
+        _swingModeStdCallback = callback;
+    }
+
+    /**
+     * Registers HVAC mode callback using std::function.
+     * It allows passing capturing lambdas and std::bind expressions.
+     */
+    inline void onModeCommand(const std::function<void(Mode, HAHVAC*)>& callback)
+    {
+        _modeCallback = nullptr;
+        _modeStdCallback = callback;
+    }
+
+    /**
+     * Registers target temperature callback using std::function.
+     * It allows passing capturing lambdas and std::bind expressions.
+     */
+    inline void onTargetTemperatureCommand(const std::function<void(HANumeric, HAHVAC*)>& callback)
+    {
+        _targetTemperatureCallback = nullptr;
+        _targetTemperatureStdCallback = callback;
+    }
+#endif
 
 protected:
     virtual void buildSerializer() override;
@@ -698,6 +794,26 @@ private:
 
     /// Callback that will be called when the target temperature is changed via the HA panel.
     HAHVAC_CALLBACK_TARGET_TEMP(_targetTemperatureCallback);
+
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+    /// The std::function callback that will be called when the aux state command is received from the HA.
+    std::function<void(bool, HAHVAC*)> _auxStdCallback;
+
+    /// The std::function callback that will be called when the power command is received from the HA.
+    std::function<void(bool, HAHVAC*)> _powerStdCallback;
+
+    /// The std::function callback that will be called when the fan mode command is received from the HA.
+    std::function<void(FanMode, HAHVAC*)> _fanModeStdCallback;
+
+    /// The std::function callback that will be called when the swing mode command is received from the HA.
+    std::function<void(SwingMode, HAHVAC*)> _swingModeStdCallback;
+
+    /// The std::function callback that will be called when the mode command is received from the HA.
+    std::function<void(Mode, HAHVAC*)> _modeStdCallback;
+
+    /// The std::function callback that will be called when the target temperature is changed via the HA panel.
+    std::function<void(HANumeric, HAHVAC*)> _targetTemperatureStdCallback;
+#endif
 };
 
 #endif

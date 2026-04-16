@@ -62,6 +62,12 @@ HALight::HALight(const char* uniqueId, const uint8_t features) :
     _brightnessCallback(nullptr),
     _colorTemperatureCallback(nullptr),
     _rgbColorCallback(nullptr)
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+    , _stateStdCallback(),
+    _brightnessStdCallback(),
+    _colorTemperatureStdCallback(),
+    _rgbColorStdCallback()
+#endif
 {
 
 }
@@ -321,23 +327,52 @@ void HALight::handleStateCommand(const uint8_t* cmd, const uint16_t length)
 {
     (void)cmd;
 
-    if (!_stateCallback) {
+    const bool hasStateCallback =
+        _stateCallback
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        || static_cast<bool>(_stateStdCallback)
+#endif
+    ;
+
+    if (!hasStateCallback) {
         return;
     }
 
     bool state = length == strlen_P(HAStateOn);
-    _stateCallback(state, this);
+    if (_stateCallback) {
+        _stateCallback(state, this);
+    }
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+    if (_stateStdCallback) {
+        _stateStdCallback(state, this);
+    }
+#endif
 }
 
 void HALight::handleBrightnessCommand(const uint8_t* cmd, const uint16_t length)
 {
-    if (!_brightnessCallback) {
+    const bool hasBrightnessCallback =
+        _brightnessCallback
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        || static_cast<bool>(_brightnessStdCallback)
+#endif
+    ;
+
+    if (!hasBrightnessCallback) {
         return;
     }
 
     const HANumeric& number = HANumeric::fromStr(cmd, length);
     if (number.isUInt8()) {
-        _brightnessCallback(number.toUInt8(), this);
+        const uint8_t brightness = number.toUInt8();
+        if (_brightnessCallback) {
+            _brightnessCallback(brightness, this);
+        }
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        if (_brightnessStdCallback) {
+            _brightnessStdCallback(brightness, this);
+        }
+#endif
     }
 }
 
@@ -346,19 +381,41 @@ void HALight::handleColorTemperatureCommand(
     const uint16_t length
 )
 {
-    if (!_colorTemperatureCallback) {
+    const bool hasColorTemperatureCallback =
+        _colorTemperatureCallback
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        || static_cast<bool>(_colorTemperatureStdCallback)
+#endif
+    ;
+
+    if (!hasColorTemperatureCallback) {
         return;
     }
 
     const HANumeric& number = HANumeric::fromStr(cmd, length);
     if (number.isUInt16()) {
-        _colorTemperatureCallback(number.toUInt16(), this);
+        const uint16_t temperature = number.toUInt16();
+        if (_colorTemperatureCallback) {
+            _colorTemperatureCallback(temperature, this);
+        }
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        if (_colorTemperatureStdCallback) {
+            _colorTemperatureStdCallback(temperature, this);
+        }
+#endif
     }
 }
 
 void HALight::handleRGBCommand(const uint8_t* cmd, const uint16_t length)
 {
-    if (!_rgbColorCallback) {
+    const bool hasRgbCallback =
+        _rgbColorCallback
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        || static_cast<bool>(_rgbColorStdCallback)
+#endif
+    ;
+
+    if (!hasRgbCallback) {
         return;
     }
 
@@ -366,7 +423,14 @@ void HALight::handleRGBCommand(const uint8_t* cmd, const uint16_t length)
     color.fromBuffer(cmd, length);
 
     if (color.isSet) {
-        _rgbColorCallback(color, this);
+        if (_rgbColorCallback) {
+            _rgbColorCallback(color, this);
+        }
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        if (_rgbColorStdCallback) {
+            _rgbColorStdCallback(color, this);
+        }
+#endif
     }
 }
 
