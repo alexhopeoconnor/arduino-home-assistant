@@ -10,8 +10,8 @@ HAText::HAText(const char* uniqueId) :
     _retain(false),
     _optimistic(false),
     _mode(ModeText),
-    _min(),
-    _max(),
+    _minValue(),
+    _maxValue(),
     _pattern(nullptr),
     _currentState(nullptr),
     _commandCallback(nullptr)
@@ -62,18 +62,18 @@ void HAText::buildSerializer()
     );
     _serializer->set(AHATOFSTR(HAPatternProperty), _pattern);
 
-    if (_min.isSet()) {
+    if (_minValue.isSet()) {
         _serializer->set(
             AHATOFSTR(HAMinProperty),
-            &_min,
+            &_minValue,
             HASerializer::NumberPropertyType
         );
     }
 
-    if (_max.isSet()) {
+    if (_maxValue.isSet()) {
         _serializer->set(
             AHATOFSTR(HAMaxProperty),
-            &_max,
+            &_maxValue,
             HASerializer::NumberPropertyType
         );
     }

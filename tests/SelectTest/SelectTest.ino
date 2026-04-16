@@ -157,6 +157,26 @@ AHA_TEST(SelectTest, multiple_options) {
     assertEqual(2, mock->getFlushedMessagesNb());
 }
 
+AHA_TEST(SelectTest, long_options_string_over_255_chars) {
+    prepareTest
+
+    char options[273];
+    for (uint16_t i = 0; i < 270; i++) {
+        options[i] = 'A';
+    }
+
+    options[270] = ';';
+    options[271] = 'B';
+    options[272] = 0;
+
+    HASelect select(testUniqueId);
+    select.setOptions(options);
+
+    assertTrue(select.getOptions() != nullptr);
+    assertEqual((uint8_t)2, select.getOptions()->getItemsNb());
+    assertEqual("B", select.getOptions()->getItem(1));
+}
+
 AHA_TEST(SelectTest, command_subscription) {
     prepareTest
 

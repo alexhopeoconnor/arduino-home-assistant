@@ -54,7 +54,7 @@ void HASelect::setOptions(const char* options)
         return;
     }
 
-    uint8_t optionLen = 0;
+    uint16_t optionLen = 0;
     for (uint16_t i = 0; i < optionsLen; i++) {
         if (options[i] == ';' || options[i] == 0) {
             if (optionLen == 0) {
@@ -65,7 +65,10 @@ void HASelect::setOptions(const char* options)
             option[optionLen] = 0;
             memcpy(option, &options[i - optionLen], optionLen);
 
-            _options->add(option);
+            if (!_options->add(option)) {
+                delete[] option;
+                break;
+            }
             optionLen = 0;
             continue;
         }
@@ -213,8 +216,12 @@ uint8_t HASelect::countOptionsInString(const char* options) const
         return 0;
     }
 
-    for (uint8_t i = 0; i < optionsLen; i++) {
+    for (uint16_t i = 0; i < optionsLen; i++) {
         if (options[i] == ';') {
+            if (optionsNb == 255) {
+                break;
+            }
+
             optionsNb++;
         }
     }

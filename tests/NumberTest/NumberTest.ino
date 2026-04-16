@@ -785,6 +785,57 @@ AHA_TEST(NumberTest, step_setter_p3) {
     )
 }
 
+AHA_TEST(NumberTest, update_min_max_step_before_connect) {
+    prepareTest
+
+    HANumber number(testUniqueId);
+    number.updateMinMaxStep(1, 99, 5);
+
+    assertEntityConfig(
+        mock,
+        number,
+        (
+            "{"
+            "\"uniq_id\":\"uniqueNumber\","
+            "\"min\":1,"
+            "\"max\":99,"
+            "\"step\":5,"
+            "\"dev\":{\"ids\":\"testDevice\"},"
+            "\"stat_t\":\"testData/testDevice/uniqueNumber/stat_t\","
+            "\"cmd_t\":\"testData/testDevice/uniqueNumber/cmd_t\""
+            "}"
+        )
+    )
+}
+
+AHA_TEST(NumberTest, update_min_max_step_republishes_config) {
+    prepareTest
+
+    HANumber number(testUniqueId);
+    mqtt.loop();
+    assertEqual(2, mock->getFlushedMessagesNb()); // config + default state
+
+    number.updateMinMaxStep(1, 99, 5);
+
+    assertEqual(3, mock->getFlushedMessagesNb());
+    assertMqttMessage(
+        2,
+        AHATOFSTR(ConfigTopic),
+        (
+            "{"
+            "\"uniq_id\":\"uniqueNumber\","
+            "\"min\":1,"
+            "\"max\":99,"
+            "\"step\":5,"
+            "\"dev\":{\"ids\":\"testDevice\"},"
+            "\"stat_t\":\"testData/testDevice/uniqueNumber/stat_t\","
+            "\"cmd_t\":\"testData/testDevice/uniqueNumber/cmd_t\""
+            "}"
+        ),
+        true
+    )
+}
+
 AHA_TEST(NumberTest, command_none) {
     prepareTest
 

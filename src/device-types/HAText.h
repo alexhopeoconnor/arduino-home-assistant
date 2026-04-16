@@ -103,7 +103,7 @@ public:
      * @param min Minimum number of characters.
      */
     inline void setMin(const uint16_t min)
-        { _min = HANumeric(min, PrecisionP0); }
+        { _minValue = HANumeric(min, PrecisionP0); }
 
     /**
      * Sets maximum accepted length of the command payload.
@@ -111,7 +111,7 @@ public:
      * @param max Maximum number of characters.
      */
     inline void setMax(const uint16_t max)
-        { _max = HANumeric(max, PrecisionP0); }
+        { _maxValue = HANumeric(max, PrecisionP0); }
 
     /**
      * Sets regex pattern for command payload validation in Home Assistant.
@@ -186,10 +186,10 @@ private:
     Mode _mode;
 
     /// The minimal number of characters accepted by Home Assistant.
-    HANumeric _min;
+    HANumeric _minValue;
 
     /// The maximum number of characters accepted by Home Assistant.
-    HANumeric _max;
+    HANumeric _maxValue;
 
     /// Regular expression pattern accepted by Home Assistant. It can be nullptr.
     const char* _pattern;

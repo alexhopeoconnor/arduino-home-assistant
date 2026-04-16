@@ -190,6 +190,16 @@ public:
         { _step = HANumeric(step, _precision); }
 
     /**
+     * Updates min/max/step and republishes discovery config.
+     * This can be used when limits need to change at runtime.
+     *
+     * @param min The minimal value.
+     * @param max The maximal value.
+     * @param step The slider step value.
+     */
+    void updateMinMaxStep(const float min, const float max, const float step);
+
+    /**
      * Registers callback that will be called each time the number is changed in the HA panel.
      * Please note that it's not possible to register multiple callbacks for the same number.
      *
