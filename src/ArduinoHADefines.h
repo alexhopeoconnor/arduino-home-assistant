@@ -29,6 +29,9 @@
     #define ARDUINOHA_ENABLE_STDFUNCTION
 #endif
 
+// Current library version used in discovery origin metadata.
+#define ARDUINOHA_LIBRARY_VERSION "2.1.0"
+
 #if defined(ARDUINOHA_DEBUG)
     #include <Arduino.h>
 

@@ -7,6 +7,7 @@ static const char* testDeviceId = "testDevice";
 static const char* testUniqueId = "uniqueCamera";
 
 const char ConfigTopic[] PROGMEM = {"homeassistant/camera/testDevice/uniqueCamera/config"};
+const char DeviceConfigTopic[] PROGMEM = {"homeassistant/device/testDevice/config"};
 const char DataTopic[] PROGMEM = {"testData/testDevice/uniqueCamera/t"};
 
 AHA_TEST(CameraTest, invalid_unique_id) {
@@ -51,6 +52,32 @@ AHA_TEST(CameraTest, extended_unique_id) {
             "\"t\":\"testData/testDevice/uniqueCamera/t\""
             "}"
         )
+    )
+}
+
+AHA_TEST(CameraTest, device_discovery_payload) {
+    initMqttTest(testDeviceId)
+
+    mqtt.enableDeviceDiscovery();
+    HACamera camera(testUniqueId);
+    mqtt.loop();
+
+    assertSingleMqttMessage(
+        AHATOFSTR(DeviceConfigTopic),
+        (
+            "{"
+            "\"dev\":{\"ids\":\"testDevice\"},"
+            "\"o\":{\"name\":\"ArduinoHA\",\"sw\":\"2.1.0\"},"
+            "\"cmps\":{"
+                "\"uniqueCamera\":{"
+                    "\"p\":\"camera\","
+                    "\"uniq_id\":\"uniqueCamera\","
+                    "\"t\":\"testData/testDevice/uniqueCamera/t\""
+                "}"
+            "}"
+            "}"
+        ),
+        true
     )
 }
 
@@ -103,6 +130,46 @@ AHA_TEST(CameraTest, object_id_setter) {
             "{"
             "\"obj_id\":\"testId\","
             "\"uniq_id\":\"uniqueCamera\","
+            "\"dev\":{\"ids\":\"testDevice\"},"
+            "\"t\":\"testData/testDevice/uniqueCamera/t\""
+            "}"
+        )
+    )
+}
+
+AHA_TEST(CameraTest, default_entity_id_setter) {
+    initMqttTest(testDeviceId)
+
+    HACamera camera(testUniqueId);
+    camera.setDefaultEntityId("camera.test_camera");
+
+    assertEntityConfig(
+        mock,
+        camera,
+        (
+            "{"
+            "\"def_ent_id\":\"camera.test_camera\","
+            "\"uniq_id\":\"uniqueCamera\","
+            "\"dev\":{\"ids\":\"testDevice\"},"
+            "\"t\":\"testData/testDevice/uniqueCamera/t\""
+            "}"
+        )
+    )
+}
+
+AHA_TEST(CameraTest, entity_category_setter) {
+    initMqttTest(testDeviceId)
+
+    HACamera camera(testUniqueId);
+    camera.setEntityCategory("diagnostic");
+
+    assertEntityConfig(
+        mock,
+        camera,
+        (
+            "{"
+            "\"uniq_id\":\"uniqueCamera\","
+            "\"ent_cat\":\"diagnostic\","
             "\"dev\":{\"ids\":\"testDevice\"},"
             "\"t\":\"testData/testDevice/uniqueCamera/t\""
             "}"

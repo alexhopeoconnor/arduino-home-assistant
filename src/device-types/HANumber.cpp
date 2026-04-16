@@ -8,7 +8,6 @@ HANumber::HANumber(const char* uniqueId, const NumberPrecision precision) :
     HABaseDeviceType(AHATOFSTR(HAComponentNumber), uniqueId),
     _precision(precision),
     _class(nullptr),
-    _entityCategory(nullptr),
     _icon(nullptr),
     _retain(false),
     _optimistic(false),
@@ -42,7 +41,7 @@ void HANumber::updateMinMaxStep(const float min, const float max, const float st
     _minValue = HANumeric(min, _precision);
     _maxValue = HANumeric(max, _precision);
     _step = HANumeric(step, _precision);
-    publishConfig();
+    republishDiscovery();
 }
 
 void HANumber::buildSerializer()
@@ -53,12 +52,12 @@ void HANumber::buildSerializer()
 
     _serializer = new HASerializer(this, 17); // 17 - max properties nb
     _serializer->set(AHATOFSTR(HANameProperty), _name);
-    _serializer->set(AHATOFSTR(HAObjectIdProperty), _objectId);
+    setEntityIdProperty(_serializer);
     _serializer->set(HASerializer::WithUniqueId);
     _serializer->set(AHATOFSTR(HADeviceClassProperty), _class);
-    _serializer->set(AHATOFSTR(HAStateEntityCategory), _entityCategory);
+    _serializer->set(AHATOFSTR(HAStateEntityCategory), nonEmptyString(_entityCategory));
     _serializer->set(AHATOFSTR(HAIconProperty), _icon);
-    _serializer->set(AHATOFSTR(HAUnitOfMeasurementProperty), _unitOfMeasurement);
+    _serializer->set(AHATOFSTR(HAUnitOfMeasurementProperty), nonEmptyString(_unitOfMeasurement));
     _serializer->set(
         AHATOFSTR(HAModeProperty),
         getModeProperty(),
@@ -116,13 +115,91 @@ void HANumber::buildSerializer()
     _serializer->topic(AHATOFSTR(HACommandTopic));
 }
 
+HASerializer* HANumber::buildDeviceDiscoverySerializer()
+{
+    if (!uniqueId()) {
+        return nullptr;
+    }
+
+    HASerializer* serializer = new HASerializer(this, 17);
+    serializer->set(
+        AHATOFSTR(HAPlatformProperty),
+        AHATOFSTR(HAComponentNumber),
+        HASerializer::ProgmemPropertyValue
+    );
+    serializer->set(AHATOFSTR(HANameProperty), _name);
+    setEntityIdProperty(serializer);
+    serializer->set(HASerializer::WithUniqueId);
+    serializer->set(AHATOFSTR(HADeviceClassProperty), _class);
+    serializer->set(AHATOFSTR(HAStateEntityCategory), nonEmptyString(_entityCategory));
+    serializer->set(AHATOFSTR(HAIconProperty), _icon);
+    serializer->set(AHATOFSTR(HAUnitOfMeasurementProperty), nonEmptyString(_unitOfMeasurement));
+    serializer->set(
+        AHATOFSTR(HAModeProperty),
+        getModeProperty(),
+        HASerializer::ProgmemPropertyValue
+    );
+    serializer->set(
+        AHATOFSTR(HACommandTemplateProperty),
+        getCommandTemplate(),
+        HASerializer::ProgmemPropertyValue
+    );
+
+    if (_minValue.isSet()) {
+        serializer->set(
+            AHATOFSTR(HAMinProperty),
+            &_minValue,
+            HASerializer::NumberPropertyType
+        );
+    }
+
+    if (_maxValue.isSet()) {
+        serializer->set(
+            AHATOFSTR(HAMaxProperty),
+            &_maxValue,
+            HASerializer::NumberPropertyType
+        );
+    }
+
+    if (_step.isSet()) {
+        serializer->set(
+            AHATOFSTR(HAStepProperty),
+            &_step,
+            HASerializer::NumberPropertyType
+        );
+    }
+
+    if (_retain) {
+        serializer->set(
+            AHATOFSTR(HARetainProperty),
+            &_retain,
+            HASerializer::BoolPropertyType
+        );
+    }
+
+    if (_optimistic) {
+        serializer->set(
+            AHATOFSTR(HAOptimisticProperty),
+            &_optimistic,
+            HASerializer::BoolPropertyType
+        );
+    }
+
+    serializer->set(HASerializer::WithAvailability);
+    serializer->topic(AHATOFSTR(HAStateTopic));
+    serializer->topic(AHATOFSTR(HACommandTopic));
+    return serializer;
+}
+
 void HANumber::onMqttConnected()
 {
     if (!uniqueId()) {
         return;
     }
 
-    publishConfig();
+    if (shouldPublishSingleComponentConfig()) {
+        publishConfig();
+    }
     publishAvailability();
 
     if (!_retain) {

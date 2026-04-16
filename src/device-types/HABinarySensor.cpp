@@ -7,7 +7,6 @@
 HABinarySensor::HABinarySensor(const char* uniqueId) :
     HABaseDeviceType(AHATOFSTR(HAComponentBinarySensor), uniqueId),
     _class(nullptr),
-    _entityCategory(nullptr),
     _icon(nullptr),
     _currentState(false)
 {
@@ -45,10 +44,10 @@ void HABinarySensor::buildSerializer()
 
     _serializer = new HASerializer(this, 10); // 10 - max properties nb
     _serializer->set(AHATOFSTR(HANameProperty), _name);
-    _serializer->set(AHATOFSTR(HAObjectIdProperty), _objectId);
+    setEntityIdProperty(_serializer);
     _serializer->set(HASerializer::WithUniqueId);
     _serializer->set(AHATOFSTR(HADeviceClassProperty), _class);
-    _serializer->set(AHATOFSTR(HAStateEntityCategory), _entityCategory);
+    _serializer->set(AHATOFSTR(HAStateEntityCategory), nonEmptyString(_entityCategory));
     _serializer->set(AHATOFSTR(HAIconProperty), _icon);
 
     if (_expireAfter.isSet()) {
@@ -64,13 +63,47 @@ void HABinarySensor::buildSerializer()
     _serializer->topic(AHATOFSTR(HAStateTopic));
 }
 
+HASerializer* HABinarySensor::buildDeviceDiscoverySerializer()
+{
+    if (!uniqueId()) {
+        return nullptr;
+    }
+
+    HASerializer* serializer = new HASerializer(this, 10);
+    serializer->set(
+        AHATOFSTR(HAPlatformProperty),
+        AHATOFSTR(HAComponentBinarySensor),
+        HASerializer::ProgmemPropertyValue
+    );
+    serializer->set(AHATOFSTR(HANameProperty), _name);
+    setEntityIdProperty(serializer);
+    serializer->set(HASerializer::WithUniqueId);
+    serializer->set(AHATOFSTR(HADeviceClassProperty), _class);
+    serializer->set(AHATOFSTR(HAStateEntityCategory), nonEmptyString(_entityCategory));
+    serializer->set(AHATOFSTR(HAIconProperty), _icon);
+
+    if (_expireAfter.isSet()) {
+        serializer->set(
+            AHATOFSTR(HAExpireAfterProperty),
+            &_expireAfter,
+            HASerializer::NumberPropertyType
+        );
+    }
+
+    serializer->set(HASerializer::WithAvailability);
+    serializer->topic(AHATOFSTR(HAStateTopic));
+    return serializer;
+}
+
 void HABinarySensor::onMqttConnected()
 {
     if (!uniqueId()) {
         return;
     }
 
-    publishConfig();
+    if (shouldPublishSingleComponentConfig()) {
+        publishConfig();
+    }
     publishAvailability();
     publishState(_currentState);
 }

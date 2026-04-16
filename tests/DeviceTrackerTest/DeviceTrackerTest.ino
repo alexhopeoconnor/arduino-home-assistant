@@ -9,6 +9,7 @@ static const char* testUniqueId = "uniqueTracker";
 const char ConfigTopic[] PROGMEM = {
     "homeassistant/device_tracker/testDevice/uniqueTracker/config"
 };
+const char DeviceConfigTopic[] PROGMEM = {"homeassistant/device/testDevice/config"};
 const char StateTopic[] PROGMEM = {"testData/testDevice/uniqueTracker/stat_t"};
 
 AHA_TEST(DeviceTrackerTest, invalid_unique_id) {
@@ -53,6 +54,32 @@ AHA_TEST(DeviceTrackerTest, extended_unique_id) {
             "\"stat_t\":\"testData/testDevice/uniqueTracker/stat_t\""
             "}"
         )
+    )
+}
+
+AHA_TEST(DeviceTrackerTest, device_discovery_payload) {
+    initMqttTest(testDeviceId)
+
+    mqtt.enableDeviceDiscovery();
+    HADeviceTracker tracker(testUniqueId);
+    mqtt.loop();
+
+    assertSingleMqttMessage(
+        AHATOFSTR(DeviceConfigTopic),
+        (
+            "{"
+            "\"dev\":{\"ids\":\"testDevice\"},"
+            "\"o\":{\"name\":\"ArduinoHA\",\"sw\":\"2.1.0\"},"
+            "\"cmps\":{"
+                "\"uniqueTracker\":{"
+                    "\"p\":\"device_tracker\","
+                    "\"uniq_id\":\"uniqueTracker\","
+                    "\"stat_t\":\"testData/testDevice/uniqueTracker/stat_t\""
+                "}"
+            "}"
+            "}"
+        ),
+        true
     )
 }
 
@@ -191,6 +218,46 @@ AHA_TEST(DeviceTrackerTest, object_id_setter) {
             "{"
             "\"obj_id\":\"testId\","
             "\"uniq_id\":\"uniqueTracker\","
+            "\"dev\":{\"ids\":\"testDevice\"},"
+            "\"stat_t\":\"testData/testDevice/uniqueTracker/stat_t\""
+            "}"
+        )
+    )
+}
+
+AHA_TEST(DeviceTrackerTest, default_entity_id_setter) {
+    initMqttTest(testDeviceId)
+
+    HADeviceTracker tracker(testUniqueId);
+    tracker.setDefaultEntityId("device_tracker.test_tracker");
+
+    assertEntityConfig(
+        mock,
+        tracker,
+        (
+            "{"
+            "\"def_ent_id\":\"device_tracker.test_tracker\","
+            "\"uniq_id\":\"uniqueTracker\","
+            "\"dev\":{\"ids\":\"testDevice\"},"
+            "\"stat_t\":\"testData/testDevice/uniqueTracker/stat_t\""
+            "}"
+        )
+    )
+}
+
+AHA_TEST(DeviceTrackerTest, entity_category_setter) {
+    initMqttTest(testDeviceId)
+
+    HADeviceTracker tracker(testUniqueId);
+    tracker.setEntityCategory("diagnostic");
+
+    assertEntityConfig(
+        mock,
+        tracker,
+        (
+            "{"
+            "\"uniq_id\":\"uniqueTracker\","
+            "\"ent_cat\":\"diagnostic\","
             "\"dev\":{\"ids\":\"testDevice\"},"
             "\"stat_t\":\"testData/testDevice/uniqueTracker/stat_t\""
             "}"

@@ -20,6 +20,23 @@ but I successfully use it on ESP8266/ESP8255 boards in my projects.
 * Doxygen documentation for all classes
 * Covered by unit tests (AUnit + EpoxyDuino + AUniter)
 
+## Discovery Notes
+
+ArduinoHA supports two MQTT discovery modes:
+
+* Single-component discovery, which remains the default behavior and publishes one retained discovery payload per entity.
+* Device discovery, which can be enabled explicitly with `HAMqtt::enableDeviceDiscovery()` and publishes a single retained `homeassistant/device/.../config` payload with component mappings under `cmps`.
+
+For entity ID suggestions in Home Assistant, prefer `setDefaultEntityId()` over `setObjectId()`.
+`setObjectId()` is still available as a legacy fallback, but newer Home Assistant versions are moving toward `default_entity_id`.
+
+If you need to manage discovery at runtime:
+
+* Use `HABaseDeviceType::republishDiscovery()` after changing discovery-relevant config at runtime.
+* Use `HABaseDeviceType::removeFromDiscovery()` to clear the retained discovery payload for a single entity.
+
+When device discovery mode is enabled, runtime discovery refreshes automatically clear any stale retained per-entity config before republishing the device discovery payload.
+
 ## Supported HA types
 
 | Home Assistant type | Supported |
@@ -47,7 +64,7 @@ but I successfully use it on ESP8266/ESP8255 boards in my projects.
 | Switch              |     ✅     |
 | Update              |     ❌     |
 | Tag scanner         |     ✅     |
-| Text                |     ❌     |
+| Text                |     ✅     |
 | Vacuum              |     ❌     |
 | Valve               |     ❌     |
 | Water heater        |     ❌     |

@@ -12,6 +12,7 @@ static const char* testUniqueId = "uniqueId";
 
 const char AvailabilityTopic[] PROGMEM = {"testData/testDevice/uniqueId/avty_t"};
 const char SharedAvailabilityTopic[] PROGMEM = {"testData/testDevice/avty_t"};
+const char ConfigTopic[] PROGMEM = {"homeassistant/componentName/testDevice/uniqueId/config"};
 const char ComponentNameStr[] PROGMEM = {"componentName"};
 
 class DummyDeviceType : public HABaseDeviceType
@@ -21,6 +22,17 @@ public:
         HABaseDeviceType(componentName, uniqueId) { }
 
 protected:
+    virtual void buildSerializer() override {
+        if (_serializer || !uniqueId()) {
+            return;
+        }
+
+        _serializer = new HASerializer(this, 3);
+        _serializer->set(AHATOFSTR(HANameProperty), "testName");
+        setEntityIdProperty(_serializer);
+        _serializer->set(HASerializer::WithUniqueId);
+    }
+
     virtual void onMqttConnected() override {
         publishAvailability();
     }
@@ -58,6 +70,13 @@ AHA_TEST(BaseDeviceTypeTest, object_id_setter) {
     DummyDeviceType deviceType(AHATOFSTR(ComponentNameStr), testUniqueId);
     deviceType.setObjectId(objectId);
     assertEqual(objectId, deviceType.getObjectId());
+}
+
+AHA_TEST(BaseDeviceTypeTest, default_entity_id_setter) {
+    const char* entityId = "sensor.test_id";
+    DummyDeviceType deviceType(AHATOFSTR(ComponentNameStr), testUniqueId);
+    deviceType.setDefaultEntityId(entityId);
+    assertEqual(entityId, deviceType.getDefaultEntityId());
 }
 
 AHA_TEST(BaseDeviceTypeTest, default_availability) {
@@ -104,6 +123,26 @@ AHA_TEST(BaseDeviceTypeTest, publish_shared_availability_runtime) {
     device.setAvailability(false);
 
     assertSingleMqttMessage(AHATOFSTR(SharedAvailabilityTopic), "offline", true)
+}
+
+AHA_TEST(BaseDeviceTypeTest, republish_discovery) {
+    prepareTest
+
+    mock->connectDummy();
+    assertTrue(deviceType.republishDiscovery());
+    assertSingleMqttMessage(
+        AHATOFSTR(ConfigTopic),
+        "{\"name\":\"testName\",\"uniq_id\":\"uniqueId\"}",
+        true
+    )
+}
+
+AHA_TEST(BaseDeviceTypeTest, remove_from_discovery) {
+    prepareTest
+
+    mock->connectDummy();
+    assertTrue(deviceType.removeFromDiscovery());
+    assertSingleMqttMessage(AHATOFSTR(ConfigTopic), "", true)
 }
 
 void setup()

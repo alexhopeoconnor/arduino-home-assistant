@@ -32,6 +32,7 @@ static const char* testUniqueId = "uniqueNumber";
 static CommandCallback lastCommandCallbackCall;
 
 const char ConfigTopic[] PROGMEM = {"homeassistant/number/testDevice/uniqueNumber/config"};
+const char DeviceConfigTopic[] PROGMEM = {"homeassistant/device/testDevice/config"};
 const char CommandTopic[] PROGMEM = {"testData/testDevice/uniqueNumber/cmd_t"};
 const char StateTopic[] PROGMEM = {"testData/testDevice/uniqueNumber/stat_t"};
 
@@ -356,6 +357,27 @@ AHA_TEST(NumberTest, object_id_setter) {
     )
 }
 
+AHA_TEST(NumberTest, default_entity_id_setter) {
+    prepareTest
+
+    HANumber number(testUniqueId);
+    number.setDefaultEntityId("number.test_number");
+
+    assertEntityConfig(
+        mock,
+        number,
+        (
+            "{"
+            "\"def_ent_id\":\"number.test_number\","
+            "\"uniq_id\":\"uniqueNumber\","
+            "\"dev\":{\"ids\":\"testDevice\"},"
+            "\"stat_t\":\"testData/testDevice/uniqueNumber/stat_t\","
+            "\"cmd_t\":\"testData/testDevice/uniqueNumber/cmd_t\""
+            "}"
+        )
+    )
+}
+
 AHA_TEST(NumberTest, device_class) {
     prepareTest
 
@@ -516,6 +538,26 @@ AHA_TEST(NumberTest, unit_of_measurement_setter) {
             "{"
             "\"uniq_id\":\"uniqueNumber\","
             "\"unit_of_meas\":\"%\","
+            "\"dev\":{\"ids\":\"testDevice\"},"
+            "\"stat_t\":\"testData/testDevice/uniqueNumber/stat_t\","
+            "\"cmd_t\":\"testData/testDevice/uniqueNumber/cmd_t\""
+            "}"
+        )
+    )
+}
+
+AHA_TEST(NumberTest, empty_unit_of_measurement_is_ignored) {
+    initMqttTest(testDeviceId)
+
+    HANumber number(testUniqueId);
+    number.setUnitOfMeasurement("");
+
+    assertEntityConfig(
+        mock,
+        number,
+        (
+            "{"
+            "\"uniq_id\":\"uniqueNumber\","
             "\"dev\":{\"ids\":\"testDevice\"},"
             "\"stat_t\":\"testData/testDevice/uniqueNumber/stat_t\","
             "\"cmd_t\":\"testData/testDevice/uniqueNumber/cmd_t\""
@@ -808,6 +850,29 @@ AHA_TEST(NumberTest, update_min_max_step_before_connect) {
     )
 }
 
+AHA_TEST(NumberTest, min_can_equal_max) {
+    prepareTest
+
+    HANumber number(testUniqueId);
+    number.setMin(5);
+    number.setMax(5);
+
+    assertEntityConfig(
+        mock,
+        number,
+        (
+            "{"
+            "\"uniq_id\":\"uniqueNumber\","
+            "\"min\":5,"
+            "\"max\":5,"
+            "\"dev\":{\"ids\":\"testDevice\"},"
+            "\"stat_t\":\"testData/testDevice/uniqueNumber/stat_t\","
+            "\"cmd_t\":\"testData/testDevice/uniqueNumber/cmd_t\""
+            "}"
+        )
+    )
+}
+
 AHA_TEST(NumberTest, update_min_max_step_republishes_config) {
     prepareTest
 
@@ -830,6 +895,45 @@ AHA_TEST(NumberTest, update_min_max_step_republishes_config) {
             "\"dev\":{\"ids\":\"testDevice\"},"
             "\"stat_t\":\"testData/testDevice/uniqueNumber/stat_t\","
             "\"cmd_t\":\"testData/testDevice/uniqueNumber/cmd_t\""
+            "}"
+        ),
+        true
+    )
+}
+
+AHA_TEST(NumberTest, update_min_max_step_republishes_device_discovery_when_enabled) {
+    prepareTest
+
+    mqtt.enableDeviceDiscovery();
+    HANumber number(testUniqueId);
+    mqtt.loop();
+    assertEqual(2, mock->getFlushedMessagesNb());
+
+    number.updateMinMaxStep(1, 99, 5);
+
+    assertEqual(4, mock->getFlushedMessagesNb());
+    MqttMessage* clearedConfig = mock->getFlushedMessages()[2];
+    assertEqual(AHATOFSTR(ConfigTopic), clearedConfig->topic);
+    assertEqual((size_t)1, clearedConfig->bufferSize);
+    assertTrue(clearedConfig->retained);
+    assertMqttMessage(
+        3,
+        AHATOFSTR(DeviceConfigTopic),
+        (
+            "{"
+            "\"dev\":{\"ids\":\"testDevice\"},"
+            "\"o\":{\"name\":\"ArduinoHA\",\"sw\":\"2.1.0\"},"
+            "\"cmps\":{"
+                "\"uniqueNumber\":{"
+                    "\"p\":\"number\","
+                    "\"uniq_id\":\"uniqueNumber\","
+                    "\"min\":1,"
+                    "\"max\":99,"
+                    "\"step\":5,"
+                    "\"stat_t\":\"testData/testDevice/uniqueNumber/stat_t\","
+                    "\"cmd_t\":\"testData/testDevice/uniqueNumber/cmd_t\""
+                "}"
+            "}"
             "}"
         ),
         true

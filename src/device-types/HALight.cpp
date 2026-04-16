@@ -134,10 +134,11 @@ void HALight::buildSerializer()
         return;
     }
 
-    _serializer = new HASerializer(this, 19); // 19 - max properties nb
+    _serializer = new HASerializer(this, 20); // 20 - max properties nb
     _serializer->set(AHATOFSTR(HANameProperty), _name);
-    _serializer->set(AHATOFSTR(HAObjectIdProperty), _objectId);
+    setEntityIdProperty(_serializer);
     _serializer->set(HASerializer::WithUniqueId);
+    _serializer->set(AHATOFSTR(HAStateEntityCategory), nonEmptyString(_entityCategory));
     _serializer->set(AHATOFSTR(HAIconProperty), _icon);
 
     if (_retain) {
@@ -201,13 +202,94 @@ void HALight::buildSerializer()
     _serializer->topic(AHATOFSTR(HACommandTopic));
 }
 
+HASerializer* HALight::buildDeviceDiscoverySerializer()
+{
+    if (!uniqueId()) {
+        return nullptr;
+    }
+
+    HASerializer* serializer = new HASerializer(this, 20);
+    serializer->set(
+        AHATOFSTR(HAPlatformProperty),
+        AHATOFSTR(HAComponentLight),
+        HASerializer::ProgmemPropertyValue
+    );
+    serializer->set(AHATOFSTR(HANameProperty), _name);
+    setEntityIdProperty(serializer);
+    serializer->set(HASerializer::WithUniqueId);
+    serializer->set(AHATOFSTR(HAStateEntityCategory), nonEmptyString(_entityCategory));
+    serializer->set(AHATOFSTR(HAIconProperty), _icon);
+
+    if (_retain) {
+        serializer->set(
+            AHATOFSTR(HARetainProperty),
+            &_retain,
+            HASerializer::BoolPropertyType
+        );
+    }
+
+    if (_optimistic) {
+        serializer->set(
+            AHATOFSTR(HAOptimisticProperty),
+            &_optimistic,
+            HASerializer::BoolPropertyType
+        );
+    }
+
+    if (_features & BrightnessFeature) {
+        serializer->topic(AHATOFSTR(HABrightnessStateTopic));
+        serializer->topic(AHATOFSTR(HABrightnessCommandTopic));
+
+        if (_brightnessScale.isSet()) {
+            serializer->set(
+                AHATOFSTR(HABrightnessScaleProperty),
+                &_brightnessScale,
+                HASerializer::NumberPropertyType
+            );
+        }
+    }
+
+    if (_features & ColorTemperatureFeature) {
+        serializer->topic(AHATOFSTR(HAColorTemperatureStateTopic));
+        serializer->topic(AHATOFSTR(HAColorTemperatureCommandTopic));
+
+        if (_minMireds.isSet()) {
+            serializer->set(
+                AHATOFSTR(HAMinMiredsProperty),
+                &_minMireds,
+                HASerializer::NumberPropertyType
+            );
+        }
+
+        if (_maxMireds.isSet()) {
+            serializer->set(
+                AHATOFSTR(HAMaxMiredsProperty),
+                &_maxMireds,
+                HASerializer::NumberPropertyType
+            );
+        }
+    }
+
+    if (_features & RGBFeature) {
+        serializer->topic(AHATOFSTR(HARGBCommandTopic));
+        serializer->topic(AHATOFSTR(HARGBStateTopic));
+    }
+
+    serializer->set(HASerializer::WithAvailability);
+    serializer->topic(AHATOFSTR(HAStateTopic));
+    serializer->topic(AHATOFSTR(HACommandTopic));
+    return serializer;
+}
+
 void HALight::onMqttConnected()
 {
     if (!uniqueId()) {
         return;
     }
 
-    publishConfig();
+    if (shouldPublishSingleComponentConfig()) {
+        publishConfig();
+    }
     publishAvailability();
 
     if (!_retain) {

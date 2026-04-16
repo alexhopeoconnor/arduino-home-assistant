@@ -1,5 +1,7 @@
 #include "HAMqtt.h"
 
+#include <cstdio>
+
 #ifndef ARDUINOHA_TEST
 #include <PubSubClient.h>
 #endif
@@ -7,6 +9,8 @@
 #include "HADevice.h"
 #include "device-types/HABaseDeviceType.h"
 #include "mocks/PubSubClientMock.h"
+#include "utils/HADictionary.h"
+#include "utils/HASerializer.h"
 
 #define HAMQTT_INIT \
     _device(device), \
@@ -17,6 +21,7 @@
     _initialized(false), \
     _discoveryPrefix(DefaultDiscoveryPrefix), \
     _dataPrefix(DefaultDataPrefix), \
+    _deviceDiscoveryEnabled(false), \
     _username(nullptr), \
     _password(nullptr), \
     _lastConnectionAttemptAt(0), \
@@ -31,6 +36,7 @@
 
 static const char* DefaultDiscoveryPrefix = "homeassistant";
 static const char* DefaultDataPrefix = "aha";
+static const char* DeviceDiscoveryOriginName = "ArduinoHA";
 
 HAMqtt* HAMqtt::_instance = nullptr;
 
@@ -332,6 +338,10 @@ void HAMqtt::connectToServer()
 
 void HAMqtt::onConnectedLogic()
 {
+    if (_deviceDiscoveryEnabled) {
+        publishDeviceDiscovery();
+    }
+
     if (_connectedCallback) {
         _connectedCallback();
     }
@@ -341,6 +351,146 @@ void HAMqtt::onConnectedLogic()
     for (uint8_t i = 0; i < _devicesTypesNb; i++) {
         _devicesTypes[i]->onMqttConnected();
     }
+}
+
+bool HAMqtt::publishDeviceDiscovery()
+{
+    if (!_device.getUniqueId()) {
+        return false;
+    }
+
+    const HASerializer* deviceSerializer = _device.getSerializer();
+    if (!deviceSerializer) {
+        return false;
+    }
+
+    HABaseDeviceType* componentTypes[_devicesTypesNb];
+    HASerializer* componentSerializers[_devicesTypesNb];
+    uint8_t componentSerializerCount = 0;
+    uint16_t componentsPayloadLength = 2; // {}
+
+    for (uint8_t i = 0; i < _devicesTypesNb; i++) {
+        HABaseDeviceType* deviceType = _devicesTypes[i];
+        if (!deviceType || !deviceType->supportsDeviceDiscovery()) {
+            continue;
+        }
+
+        HASerializer* serializer = deviceType->buildDeviceDiscoverySerializer();
+        if (!serializer) {
+            continue;
+        }
+
+        if (componentSerializerCount > 0) {
+            componentsPayloadLength += strlen_P(HASerializerJsonPropertiesSeparator);
+        }
+
+        componentsPayloadLength +=
+            strlen_P(HASerializerJsonPropertyPrefix) +
+            strlen(deviceType->uniqueId()) +
+            strlen_P(HASerializerJsonPropertySuffix) +
+            serializer->calculateSize();
+
+        componentTypes[componentSerializerCount] = deviceType;
+        componentSerializers[componentSerializerCount++] = serializer;
+    }
+
+    if (componentSerializerCount == 0) {
+        return false;
+    }
+
+    char originPayload[64];
+    originPayload[0] = 0;
+    snprintf(
+        originPayload,
+        sizeof(originPayload),
+        "{\"name\":\"%s\",\"sw\":\"%s\"}",
+        DeviceDiscoveryOriginName,
+        ARDUINOHA_LIBRARY_VERSION
+    );
+    const uint16_t originPayloadLength = strlen(originPayload);
+
+    const uint16_t topicLength =
+        strlen(_discoveryPrefix) + 1 +
+        strlen_P(HAComponentDevice) + 1 +
+        strlen(_device.getUniqueId()) + 1 +
+        strlen_P(HAConfigTopic) + 1;
+    if (topicLength == 0) {
+        for (uint8_t i = 0; i < componentSerializerCount; i++) {
+            delete componentSerializers[i];
+        }
+
+        return false;
+    }
+
+    const uint16_t payloadLength =
+        strlen_P(HASerializerJsonDataPrefix) +
+        strlen_P(HASerializerJsonPropertyPrefix) +
+        strlen_P(HADeviceProperty) +
+        strlen_P(HASerializerJsonPropertySuffix) +
+        deviceSerializer->calculateSize() +
+        strlen_P(HASerializerJsonPropertiesSeparator) +
+        strlen_P(HASerializerJsonPropertyPrefix) +
+        strlen_P(HAOriginProperty) +
+        strlen_P(HASerializerJsonPropertySuffix) +
+        originPayloadLength +
+        strlen_P(HASerializerJsonPropertiesSeparator) +
+        strlen_P(HASerializerJsonPropertyPrefix) +
+        strlen_P(HAComponentsProperty) +
+        strlen_P(HASerializerJsonPropertySuffix) +
+        componentsPayloadLength +
+        strlen_P(HASerializerJsonDataSuffix);
+
+    char topic[topicLength];
+    strcpy(topic, _discoveryPrefix);
+    strcat_P(topic, HASerializerSlash);
+    strcat_P(topic, HAComponentDevice);
+    strcat_P(topic, HASerializerSlash);
+    strcat(topic, _device.getUniqueId());
+    strcat_P(topic, HASerializerSlash);
+    strcat_P(topic, HAConfigTopic);
+
+    if (!_mqtt->beginPublish(topic, payloadLength, true)) {
+        for (uint8_t i = 0; i < componentSerializerCount; i++) {
+            delete componentSerializers[i];
+        }
+
+        return false;
+    }
+
+    writePayload(AHATOFSTR(HASerializerJsonDataPrefix));
+
+    writePayload(AHATOFSTR(HASerializerJsonPropertyPrefix));
+    writePayload(AHATOFSTR(HADeviceProperty));
+    writePayload(AHATOFSTR(HASerializerJsonPropertySuffix));
+    deviceSerializer->flush();
+
+    writePayload(AHATOFSTR(HASerializerJsonPropertiesSeparator));
+    writePayload(AHATOFSTR(HASerializerJsonPropertyPrefix));
+    writePayload(AHATOFSTR(HAOriginProperty));
+    writePayload(AHATOFSTR(HASerializerJsonPropertySuffix));
+    writePayload(originPayload, originPayloadLength);
+
+    writePayload(AHATOFSTR(HASerializerJsonPropertiesSeparator));
+    writePayload(AHATOFSTR(HASerializerJsonPropertyPrefix));
+    writePayload(AHATOFSTR(HAComponentsProperty));
+    writePayload(AHATOFSTR(HASerializerJsonPropertySuffix));
+    writePayload(AHATOFSTR(HASerializerJsonDataPrefix));
+
+    for (uint8_t i = 0; i < componentSerializerCount; i++) {
+        if (i > 0) {
+            writePayload(AHATOFSTR(HASerializerJsonPropertiesSeparator));
+        }
+
+        writePayload(AHATOFSTR(HASerializerJsonPropertyPrefix));
+        writePayload(componentTypes[i]->uniqueId(), strlen(componentTypes[i]->uniqueId()));
+        writePayload(AHATOFSTR(HASerializerJsonPropertySuffix));
+        componentSerializers[i]->flush();
+        delete componentSerializers[i];
+    }
+
+    writePayload(AHATOFSTR(HASerializerJsonDataSuffix));
+    writePayload(AHATOFSTR(HASerializerJsonDataSuffix));
+    return endPublish();
 }
 
 void HAMqtt::setState(ConnectionState state)

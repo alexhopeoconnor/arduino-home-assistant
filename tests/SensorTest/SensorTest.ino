@@ -110,6 +110,26 @@ AHA_TEST(SensorTest, object_id_setter) {
     )
 }
 
+AHA_TEST(SensorTest, default_entity_id_setter) {
+    initMqttTest(testDeviceId)
+
+    HASensor sensor(testUniqueId);
+    sensor.setDefaultEntityId("sensor.test_sensor");
+
+    assertEntityConfig(
+        mock,
+        sensor,
+        (
+            "{"
+            "\"def_ent_id\":\"sensor.test_sensor\","
+            "\"uniq_id\":\"uniqueSensor\","
+            "\"dev\":{\"ids\":\"testDevice\"},"
+            "\"stat_t\":\"testData/testDevice/uniqueSensor/stat_t\""
+            "}"
+        )
+    )
+}
+
 AHA_TEST(SensorTest, device_class_setter) {
     initMqttTest(testDeviceId)
 
@@ -223,6 +243,25 @@ AHA_TEST(SensorTest, unit_of_measurement_setter) {
             "{"
             "\"uniq_id\":\"uniqueSensor\","
             "\"unit_of_meas\":\"%\","
+            "\"dev\":{\"ids\":\"testDevice\"},"
+            "\"stat_t\":\"testData/testDevice/uniqueSensor/stat_t\""
+            "}"
+        )
+    )
+}
+
+AHA_TEST(SensorTest, empty_unit_of_measurement_is_ignored) {
+    initMqttTest(testDeviceId)
+
+    HASensor sensor(testUniqueId);
+    sensor.setUnitOfMeasurement("");
+
+    assertEntityConfig(
+        mock,
+        sensor,
+        (
+            "{"
+            "\"uniq_id\":\"uniqueSensor\","
             "\"dev\":{\"ids\":\"testDevice\"},"
             "\"stat_t\":\"testData/testDevice/uniqueSensor/stat_t\""
             "}"

@@ -50,10 +50,11 @@ void HAText::buildSerializer()
         return;
     }
 
-    _serializer = new HASerializer(this, 14); // 14 - max properties nb
+    _serializer = new HASerializer(this, 15); // 15 - max properties nb
     _serializer->set(AHATOFSTR(HANameProperty), _name);
-    _serializer->set(AHATOFSTR(HAObjectIdProperty), _objectId);
+    setEntityIdProperty(_serializer);
     _serializer->set(HASerializer::WithUniqueId);
+    _serializer->set(AHATOFSTR(HAStateEntityCategory), nonEmptyString(_entityCategory));
     _serializer->set(AHATOFSTR(HAIconProperty), _icon);
     _serializer->set(
         AHATOFSTR(HAModeProperty),
@@ -100,13 +101,77 @@ void HAText::buildSerializer()
     _serializer->topic(AHATOFSTR(HACommandTopic));
 }
 
+HASerializer* HAText::buildDeviceDiscoverySerializer()
+{
+    if (!uniqueId()) {
+        return nullptr;
+    }
+
+    HASerializer* serializer = new HASerializer(this, 15);
+    serializer->set(
+        AHATOFSTR(HAPlatformProperty),
+        AHATOFSTR(HAComponentText),
+        HASerializer::ProgmemPropertyValue
+    );
+    serializer->set(AHATOFSTR(HANameProperty), _name);
+    setEntityIdProperty(serializer);
+    serializer->set(HASerializer::WithUniqueId);
+    serializer->set(AHATOFSTR(HAStateEntityCategory), nonEmptyString(_entityCategory));
+    serializer->set(AHATOFSTR(HAIconProperty), _icon);
+    serializer->set(
+        AHATOFSTR(HAModeProperty),
+        getModeProperty(),
+        HASerializer::ProgmemPropertyValue
+    );
+    serializer->set(AHATOFSTR(HAPatternProperty), _pattern);
+
+    if (_minValue.isSet()) {
+        serializer->set(
+            AHATOFSTR(HAMinProperty),
+            &_minValue,
+            HASerializer::NumberPropertyType
+        );
+    }
+
+    if (_maxValue.isSet()) {
+        serializer->set(
+            AHATOFSTR(HAMaxProperty),
+            &_maxValue,
+            HASerializer::NumberPropertyType
+        );
+    }
+
+    if (_retain) {
+        serializer->set(
+            AHATOFSTR(HARetainProperty),
+            &_retain,
+            HASerializer::BoolPropertyType
+        );
+    }
+
+    if (_optimistic) {
+        serializer->set(
+            AHATOFSTR(HAOptimisticProperty),
+            &_optimistic,
+            HASerializer::BoolPropertyType
+        );
+    }
+
+    serializer->set(HASerializer::WithAvailability);
+    serializer->topic(AHATOFSTR(HAStateTopic));
+    serializer->topic(AHATOFSTR(HACommandTopic));
+    return serializer;
+}
+
 void HAText::onMqttConnected()
 {
     if (!uniqueId()) {
         return;
     }
 
-    publishConfig();
+    if (shouldPublishSingleComponentConfig()) {
+        publishConfig();
+    }
     publishAvailability();
 
     if (!_retain && _currentState) {

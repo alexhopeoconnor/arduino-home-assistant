@@ -7,6 +7,7 @@ static const char* testDeviceId = "testDevice";
 static const char* testUniqueId = "uniqueScanner";
 
 const char ConfigTopic[] PROGMEM = {"homeassistant/tag/testDevice/uniqueScanner/config"};
+const char DeviceConfigTopic[] PROGMEM = {"homeassistant/device/testDevice/config"};
 
 AHA_TEST(TagScannerTest, invalid_unique_id) {
     initMqttTest(testDeviceId)
@@ -31,6 +32,31 @@ AHA_TEST(TagScannerTest, default_params) {
             "\"t\":\"testData/testDevice/uniqueScanner/t\""
             "}"
         )
+    )
+}
+
+AHA_TEST(TagScannerTest, device_discovery_payload) {
+    initMqttTest(testDeviceId)
+
+    mqtt.enableDeviceDiscovery();
+    HATagScanner scanner(testUniqueId);
+    mqtt.loop();
+
+    assertSingleMqttMessage(
+        AHATOFSTR(DeviceConfigTopic),
+        (
+            "{"
+            "\"dev\":{\"ids\":\"testDevice\"},"
+            "\"o\":{\"name\":\"ArduinoHA\",\"sw\":\"2.1.0\"},"
+            "\"cmps\":{"
+                "\"uniqueScanner\":{"
+                    "\"p\":\"tag\","
+                    "\"t\":\"testData/testDevice/uniqueScanner/t\""
+                "}"
+            "}"
+            "}"
+        ),
+        true
     )
 }
 

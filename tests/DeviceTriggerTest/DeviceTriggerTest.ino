@@ -10,6 +10,7 @@ static const char* triggerSubtype = "mySubtype";
 const char ConfigTopic[] PROGMEM = {
     "homeassistant/device_automation/testDevice/myType_mySubtype/config"
 };
+const char DeviceConfigTopic[] PROGMEM = {"homeassistant/device/testDevice/config"};
 
 AHA_TEST(DeviceTriggerTest, invalid_type) {
     initMqttTest(testDeviceId)
@@ -84,6 +85,34 @@ AHA_TEST(DeviceTriggerTest, string_type_string_subtype) {
             "\"t\":\"testData/testDevice/myType_mySubtype/t\""
             "}"
         )
+    )
+}
+
+AHA_TEST(DeviceTriggerTest, device_discovery_payload) {
+    initMqttTest(testDeviceId)
+
+    mqtt.enableDeviceDiscovery();
+    HADeviceTrigger trigger(triggerType, triggerSubtype);
+    mqtt.loop();
+
+    assertSingleMqttMessage(
+        AHATOFSTR(DeviceConfigTopic),
+        (
+            "{"
+            "\"dev\":{\"ids\":\"testDevice\"},"
+            "\"o\":{\"name\":\"ArduinoHA\",\"sw\":\"2.1.0\"},"
+            "\"cmps\":{"
+                "\"myType_mySubtype\":{"
+                    "\"p\":\"device_automation\","
+                    "\"atype\":\"trigger\","
+                    "\"type\":\"myType\","
+                    "\"stype\":\"mySubtype\","
+                    "\"t\":\"testData/testDevice/myType_mySubtype/t\""
+                "}"
+            "}"
+            "}"
+        ),
+        true
     )
 }
 

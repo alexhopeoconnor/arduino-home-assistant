@@ -373,6 +373,9 @@ public:
 
 protected:
     virtual void buildSerializer() override;
+    virtual HASerializer* buildDeviceDiscoverySerializer() override;
+    virtual bool supportsDeviceDiscovery() const override
+        { return true; }
     virtual void onMqttConnected() override;
     virtual void onMqttMessage(
         const char* topic,

@@ -33,10 +33,11 @@ void HADeviceTracker::buildSerializer()
         return;
     }
 
-    _serializer = new HASerializer(this, 8); // 8 - max properties nb
+    _serializer = new HASerializer(this, 9); // 9 - max properties nb
     _serializer->set(AHATOFSTR(HANameProperty), _name);
-    _serializer->set(AHATOFSTR(HAObjectIdProperty), _objectId);
+    setEntityIdProperty(_serializer);
     _serializer->set(HASerializer::WithUniqueId);
+    _serializer->set(AHATOFSTR(HAStateEntityCategory), nonEmptyString(_entityCategory));
     _serializer->set(AHATOFSTR(HAIconProperty), _icon);
     _serializer->set(
         AHATOFSTR(HASourceTypeProperty),
@@ -48,13 +49,42 @@ void HADeviceTracker::buildSerializer()
     _serializer->topic(AHATOFSTR(HAStateTopic));
 }
 
+HASerializer* HADeviceTracker::buildDeviceDiscoverySerializer()
+{
+    if (!uniqueId()) {
+        return nullptr;
+    }
+
+    HASerializer* serializer = new HASerializer(this, 9);
+    serializer->set(
+        AHATOFSTR(HAPlatformProperty),
+        AHATOFSTR(HAComponentDeviceTracker),
+        HASerializer::ProgmemPropertyValue
+    );
+    serializer->set(AHATOFSTR(HANameProperty), _name);
+    setEntityIdProperty(serializer);
+    serializer->set(HASerializer::WithUniqueId);
+    serializer->set(AHATOFSTR(HAStateEntityCategory), nonEmptyString(_entityCategory));
+    serializer->set(AHATOFSTR(HAIconProperty), _icon);
+    serializer->set(
+        AHATOFSTR(HASourceTypeProperty),
+        getSourceTypeProperty(),
+        HASerializer::ProgmemPropertyValue
+    );
+    serializer->set(HASerializer::WithAvailability);
+    serializer->topic(AHATOFSTR(HAStateTopic));
+    return serializer;
+}
+
 void HADeviceTracker::onMqttConnected()
 {
     if (!uniqueId()) {
         return;
     }
 
-    publishConfig();
+    if (shouldPublishSingleComponentConfig()) {
+        publishConfig();
+    }
     publishAvailability();
     publishState(_currentState);
 }

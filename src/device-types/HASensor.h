@@ -74,15 +74,6 @@ public:
         { _stateClass = stateClass; }
 
     /**
-     * Sets the entity category for the sensor.
-     * See: https://www.home-assistant.io/integrations/sensor.mqtt/#entity_category
-     *
-     * @param entityCategory The category name.
-     */
-    inline void setEntityCategory(const char* entityCategory)
-        { _entityCategory = entityCategory; }
-
-    /**
      * Forces HA panel to process each incoming value (MQTT message).
      * It's useful if you want to have meaningful value graphs in history.
      *
@@ -110,6 +101,9 @@ public:
 
 protected:
     virtual void buildSerializer() override final;
+    virtual HASerializer* buildDeviceDiscoverySerializer() override;
+    virtual bool supportsDeviceDiscovery() const override
+        { return true; }
     virtual void onMqttConnected() override;
 
 private:
@@ -121,9 +115,6 @@ private:
 
     /// The state class for the long term stats. It can be nullptr. See: https://developers.home-assistant.io/docs/core/entity/sensor/#long-term-statistics
     const char* _stateClass;
-
-    /// The entity category for the sensor. It can be nullptr.
-    const char* _entityCategory;
 
     /// The force update flag for the HA panel.
     bool _forceUpdate;

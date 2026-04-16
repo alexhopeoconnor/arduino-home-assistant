@@ -32,6 +32,7 @@ static const char* testUniqueId = "uniqueSwitch";
 static CommandCallback lastCommandCallbackCall;
 
 const char ConfigTopic[] PROGMEM = {"homeassistant/switch/testDevice/uniqueSwitch/config"};
+const char DeviceConfigTopic[] PROGMEM = {"homeassistant/device/testDevice/config"};
 const char StateTopic[] PROGMEM = {"testData/testDevice/uniqueSwitch/stat_t"};
 const char CommandTopic[] PROGMEM = {"testData/testDevice/uniqueSwitch/cmd_t"};
 
@@ -89,6 +90,36 @@ AHA_TEST(SwitchTest, extended_unique_id) {
         )
     )
     assertEqual(2, mock->getFlushedMessagesNb());
+}
+
+AHA_TEST(SwitchTest, device_discovery_payload) {
+    prepareTest
+
+    mqtt.enableDeviceDiscovery();
+    HASwitch testSwitch(testUniqueId);
+    mqtt.loop();
+
+    assertEqual(2, mock->getFlushedMessagesNb());
+    assertMqttMessage(
+        0,
+        AHATOFSTR(DeviceConfigTopic),
+        (
+            "{"
+            "\"dev\":{\"ids\":\"testDevice\"},"
+            "\"o\":{\"name\":\"ArduinoHA\",\"sw\":\"2.1.0\"},"
+            "\"cmps\":{"
+                "\"uniqueSwitch\":{"
+                    "\"p\":\"switch\","
+                    "\"uniq_id\":\"uniqueSwitch\","
+                    "\"stat_t\":\"testData/testDevice/uniqueSwitch/stat_t\","
+                    "\"cmd_t\":\"testData/testDevice/uniqueSwitch/cmd_t\""
+                "}"
+            "}"
+            "}"
+        ),
+        true
+    )
+    assertMqttMessage(1, AHATOFSTR(StateTopic), "OFF", true)
 }
 
 AHA_TEST(SwitchTest, command_subscription) {
@@ -181,6 +212,27 @@ AHA_TEST(SwitchTest, object_id_setter) {
     )
 }
 
+AHA_TEST(SwitchTest, default_entity_id_setter) {
+    prepareTest
+
+    HASwitch testSwitch(testUniqueId);
+    testSwitch.setDefaultEntityId("switch.test_switch");
+
+    assertEntityConfig(
+        mock,
+        testSwitch,
+        (
+            "{"
+            "\"def_ent_id\":\"switch.test_switch\","
+            "\"uniq_id\":\"uniqueSwitch\","
+            "\"dev\":{\"ids\":\"testDevice\"},"
+            "\"stat_t\":\"testData/testDevice/uniqueSwitch/stat_t\","
+            "\"cmd_t\":\"testData/testDevice/uniqueSwitch/cmd_t\""
+            "}"
+        )
+    )
+}
+
 AHA_TEST(SwitchTest, device_class) {
     prepareTest
 
@@ -194,6 +246,27 @@ AHA_TEST(SwitchTest, device_class) {
             "{"
             "\"uniq_id\":\"uniqueSwitch\","
             "\"dev_cla\":\"testClass\","
+            "\"dev\":{\"ids\":\"testDevice\"},"
+            "\"stat_t\":\"testData/testDevice/uniqueSwitch/stat_t\","
+            "\"cmd_t\":\"testData/testDevice/uniqueSwitch/cmd_t\""
+            "}"
+        )
+    )
+}
+
+AHA_TEST(SwitchTest, entity_category_setter) {
+    prepareTest
+
+    HASwitch testSwitch(testUniqueId);
+    testSwitch.setEntityCategory("diagnostic");
+
+    assertEntityConfig(
+        mock,
+        testSwitch,
+        (
+            "{"
+            "\"uniq_id\":\"uniqueSwitch\","
+            "\"ent_cat\":\"diagnostic\","
             "\"dev\":{\"ids\":\"testDevice\"},"
             "\"stat_t\":\"testData/testDevice/uniqueSwitch/stat_t\","
             "\"cmd_t\":\"testData/testDevice/uniqueSwitch/cmd_t\""

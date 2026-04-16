@@ -90,13 +90,50 @@ void HADeviceTrigger::buildSerializer()
     _serializer->topic(AHATOFSTR(HATopic));
 }
 
+HASerializer* HADeviceTrigger::buildDeviceDiscoverySerializer()
+{
+    if (!uniqueId()) {
+        return nullptr;
+    }
+
+    HASerializer* serializer = new HASerializer(this, 6);
+    serializer->set(
+        AHATOFSTR(HAPlatformProperty),
+        AHATOFSTR(HAComponentDeviceAutomation),
+        HASerializer::ProgmemPropertyValue
+    );
+    serializer->set(
+        AHATOFSTR(HAAutomationTypeProperty),
+        AHATOFSTR(HATrigger),
+        HASerializer::ProgmemPropertyValue
+    );
+    serializer->set(
+        AHATOFSTR(HATypeProperty),
+        _type,
+        _isProgmemType
+            ? HASerializer::ProgmemPropertyValue
+            : HASerializer::ConstCharPropertyValue
+    );
+    serializer->set(
+        AHATOFSTR(HASubtypeProperty),
+        _subtype,
+        _isProgmemSubtype
+            ? HASerializer::ProgmemPropertyValue
+            : HASerializer::ConstCharPropertyValue
+    );
+    serializer->topic(AHATOFSTR(HATopic));
+    return serializer;
+}
+
 void HADeviceTrigger::onMqttConnected()
 {
     if (!uniqueId()) {
         return;
     }
 
-    publishConfig();
+    if (shouldPublishSingleComponentConfig()) {
+        publishConfig();
+    }
 }
 
 uint16_t HADeviceTrigger::calculateIdSize() const

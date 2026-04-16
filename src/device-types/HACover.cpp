@@ -57,11 +57,12 @@ void HACover::buildSerializer()
         return;
     }
 
-    _serializer = new HASerializer(this, 12); // 12 - max properties nb
+    _serializer = new HASerializer(this, 13); // 13 - max properties nb
     _serializer->set(AHATOFSTR(HANameProperty), _name);
-    _serializer->set(AHATOFSTR(HAObjectIdProperty), _objectId);
+    setEntityIdProperty(_serializer);
     _serializer->set(HASerializer::WithUniqueId);
     _serializer->set(AHATOFSTR(HADeviceClassProperty), _class);
+    _serializer->set(AHATOFSTR(HAStateEntityCategory), nonEmptyString(_entityCategory));
     _serializer->set(AHATOFSTR(HAIconProperty), _icon);
 
     if (_retain) {
@@ -90,13 +91,61 @@ void HACover::buildSerializer()
     }
 }
 
+HASerializer* HACover::buildDeviceDiscoverySerializer()
+{
+    if (!uniqueId()) {
+        return nullptr;
+    }
+
+    HASerializer* serializer = new HASerializer(this, 13);
+    serializer->set(
+        AHATOFSTR(HAPlatformProperty),
+        AHATOFSTR(HAComponentCover),
+        HASerializer::ProgmemPropertyValue
+    );
+    serializer->set(AHATOFSTR(HANameProperty), _name);
+    setEntityIdProperty(serializer);
+    serializer->set(HASerializer::WithUniqueId);
+    serializer->set(AHATOFSTR(HADeviceClassProperty), _class);
+    serializer->set(AHATOFSTR(HAStateEntityCategory), nonEmptyString(_entityCategory));
+    serializer->set(AHATOFSTR(HAIconProperty), _icon);
+
+    if (_retain) {
+        serializer->set(
+            AHATOFSTR(HARetainProperty),
+            &_retain,
+            HASerializer::BoolPropertyType
+        );
+    }
+
+    if (_optimistic) {
+        serializer->set(
+            AHATOFSTR(HAOptimisticProperty),
+            &_optimistic,
+            HASerializer::BoolPropertyType
+        );
+    }
+
+    serializer->set(HASerializer::WithAvailability);
+    serializer->topic(AHATOFSTR(HAStateTopic));
+    serializer->topic(AHATOFSTR(HACommandTopic));
+
+    if (_features & PositionFeature) {
+        serializer->topic(AHATOFSTR(HAPositionTopic));
+    }
+
+    return serializer;
+}
+
 void HACover::onMqttConnected()
 {
     if (!uniqueId()) {
         return;
     }
 
-    publishConfig();
+    if (shouldPublishSingleComponentConfig()) {
+        publishConfig();
+    }
     publishAvailability();
 
     if (!_retain) {

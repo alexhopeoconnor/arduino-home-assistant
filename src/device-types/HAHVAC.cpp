@@ -191,10 +191,11 @@ void HAHVAC::buildSerializer()
         return;
     }
 
-    _serializer = new HASerializer(this, 28); // 28 - max properties nb
+    _serializer = new HASerializer(this, 29); // 29 - max properties nb
     _serializer->set(AHATOFSTR(HANameProperty), _name);
-    _serializer->set(AHATOFSTR(HAObjectIdProperty), _objectId);
+    setEntityIdProperty(_serializer);
     _serializer->set(HASerializer::WithUniqueId);
+    _serializer->set(AHATOFSTR(HAStateEntityCategory), nonEmptyString(_entityCategory));
     _serializer->set(AHATOFSTR(HAIconProperty), _icon);
 
     if (_retain) {
@@ -362,13 +363,198 @@ void HAHVAC::buildSerializer()
     _serializer->set(HASerializer::WithAvailability);
 }
 
+HASerializer* HAHVAC::buildDeviceDiscoverySerializer()
+{
+    if (!uniqueId()) {
+        return nullptr;
+    }
+
+    HASerializer* serializer = new HASerializer(this, 29);
+    serializer->set(
+        AHATOFSTR(HAPlatformProperty),
+        AHATOFSTR(HAComponentClimate),
+        HASerializer::ProgmemPropertyValue
+    );
+    serializer->set(AHATOFSTR(HANameProperty), _name);
+    setEntityIdProperty(serializer);
+    serializer->set(HASerializer::WithUniqueId);
+    serializer->set(AHATOFSTR(HAStateEntityCategory), nonEmptyString(_entityCategory));
+    serializer->set(AHATOFSTR(HAIconProperty), _icon);
+
+    if (_retain) {
+        serializer->set(
+            AHATOFSTR(HARetainProperty),
+            &_retain,
+            HASerializer::BoolPropertyType
+        );
+    }
+
+    if (_features & ActionFeature) {
+        serializer->topic(AHATOFSTR(HAActionTopic));
+    }
+
+    if (_features & AuxHeatingFeature) {
+        serializer->topic(AHATOFSTR(HAAuxCommandTopic));
+        serializer->topic(AHATOFSTR(HAAuxStateTopic));
+    }
+
+    if (_features & PowerFeature) {
+        serializer->topic(AHATOFSTR(HAPowerCommandTopic));
+    }
+
+    if (_features & FanFeature) {
+        serializer->topic(AHATOFSTR(HAFanModeCommandTopic));
+        serializer->topic(AHATOFSTR(HAFanModeStateTopic));
+
+        if (_fanModes != DefaultFanModes) {
+            _fanModesSerializer->clear();
+
+            if (_fanModes & AutoFanMode) {
+                _fanModesSerializer->add(HAFanModeAuto);
+            }
+
+            if (_fanModes & LowFanMode) {
+                _fanModesSerializer->add(HAFanModeLow);
+            }
+
+            if (_fanModes & MediumFanMode) {
+                _fanModesSerializer->add(HAFanModeMedium);
+            }
+
+            if (_fanModes & HighFanMode) {
+                _fanModesSerializer->add(HAFanModeHigh);
+            }
+
+            serializer->set(
+                AHATOFSTR(HAFanModesProperty),
+                _fanModesSerializer,
+                HASerializer::ArrayPropertyType
+            );
+        }
+    }
+
+    if (_features & SwingFeature) {
+        serializer->topic(AHATOFSTR(HASwingModeCommandTopic));
+        serializer->topic(AHATOFSTR(HASwingModeStateTopic));
+
+        if (_swingModes != DefaultSwingModes) {
+            _swingModesSerializer->clear();
+
+            if (_swingModes & OnSwingMode) {
+                _swingModesSerializer->add(HASwingModeOn);
+            }
+
+            if (_swingModes & OffSwingMode) {
+                _swingModesSerializer->add(HASwingModeOff);
+            }
+
+            serializer->set(
+                AHATOFSTR(HASwingModesProperty),
+                _swingModesSerializer,
+                HASerializer::ArrayPropertyType
+            );
+        }
+    }
+
+    if (_features & ModesFeature) {
+        serializer->topic(AHATOFSTR(HAModeCommandTopic));
+        serializer->topic(AHATOFSTR(HAModeStateTopic));
+
+        if (_modes != DefaultModes) {
+            _modesSerializer->clear();
+
+            if (_modes & AutoMode) {
+                _modesSerializer->add(HAModeAuto);
+            }
+
+            if (_modes & OffMode) {
+                _modesSerializer->add(HAModeOff);
+            }
+
+            if (_modes & CoolMode) {
+                _modesSerializer->add(HAModeCool);
+            }
+
+            if (_modes & HeatMode) {
+                _modesSerializer->add(HAModeHeat);
+            }
+
+            if (_modes & DryMode) {
+                _modesSerializer->add(HAModeDry);
+            }
+
+            if (_modes & FanOnlyMode) {
+                _modesSerializer->add(HAModeFanOnly);
+            }
+
+            serializer->set(
+                AHATOFSTR(HAModesProperty),
+                _modesSerializer,
+                HASerializer::ArrayPropertyType
+            );
+        }
+    }
+
+    if (_features & TargetTemperatureFeature) {
+        serializer->topic(AHATOFSTR(HATemperatureCommandTopic));
+        serializer->topic(AHATOFSTR(HATemperatureStateTopic));
+        serializer->set(
+            AHATOFSTR(HATemperatureCommandTemplateProperty),
+            getCommandWithFloatTemplate(),
+            HASerializer::ProgmemPropertyValue
+        );
+    }
+
+    if (_temperatureUnit != DefaultUnit) {
+        const __FlashStringHelper *unitStr = _temperatureUnit == CelsiusUnit
+            ? AHATOFSTR(HATemperatureUnitC)
+            : AHATOFSTR(HATemperatureUnitF);
+
+        serializer->set(
+            AHATOFSTR(HATemperatureUnitProperty),
+            unitStr,
+            HASerializer::ProgmemPropertyValue
+        );
+    }
+
+    if (_minTemp.isSet()) {
+        serializer->set(
+            AHATOFSTR(HAMinTempProperty),
+            &_minTemp,
+            HASerializer::NumberPropertyType
+        );
+    }
+
+    if (_maxTemp.isSet()) {
+        serializer->set(
+            AHATOFSTR(HAMaxTempProperty),
+            &_maxTemp,
+            HASerializer::NumberPropertyType
+        );
+    }
+
+    if (_tempStep.isSet()) {
+        serializer->set(
+            AHATOFSTR(HATempStepProperty),
+            &_tempStep,
+            HASerializer::NumberPropertyType
+        );
+    }
+
+    serializer->topic(AHATOFSTR(HACurrentTemperatureTopic));
+    serializer->set(HASerializer::WithAvailability);
+    return serializer;
+}
+
 void HAHVAC::onMqttConnected()
 {
     if (!uniqueId()) {
         return;
     }
 
-    publishConfig();
+    if (shouldPublishSingleComponentConfig()) {
+        publishConfig();
+    }
     publishAvailability();
 
     if (!_retain) {

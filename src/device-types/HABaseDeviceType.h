@@ -81,8 +81,25 @@ public:
         { return _name; }
 
     /**
-     * Sets object ID that will be used by HA to generate entity ID.
+     * Sets the default entity ID that Home Assistant should use when creating
+     * the entity for the first time.
      * Keep the ID short to save the resources.
+     *
+     * @param entityId The default entity ID.
+     */
+    inline void setDefaultEntityId(const char* entityId)
+        { _defaultEntityId = entityId; }
+
+    /**
+     * Returns the default entity ID that was assigned via setDefaultEntityId.
+     * It can be nullptr if there is no ID assigned.
+     */
+    inline const char* getDefaultEntityId() const
+        { return _defaultEntityId; }
+
+    /**
+     * Legacy alias for the MQTT `object_id` discovery property.
+     * Prefer setDefaultEntityId() for new code.
      *
      * @param objectId The object ID.
      */
@@ -97,6 +114,20 @@ public:
         { return _objectId; }
 
     /**
+     * Sets the entity category for this entity.
+     *
+     * @param entityCategory The category name.
+     */
+    inline void setEntityCategory(const char* entityCategory)
+        { _entityCategory = entityCategory; }
+
+    /**
+     * Returns the entity category for this entity.
+     */
+    inline const char* getEntityCategory() const
+        { return _entityCategory; }
+
+    /**
      * Sets availability of the device type.
      * Setting the initial availability enables availability reporting for this device type.
      * Please note that not all device types support this feature.
@@ -105,6 +136,17 @@ public:
      * @param online Specifies whether the device type is online.
      */
     virtual void setAvailability(bool online);
+
+    /**
+     * Removes this entity from MQTT discovery by publishing an empty retained
+     * payload on its config topic.
+     */
+    bool removeFromDiscovery();
+
+    /**
+     * Republishes MQTT discovery config for this entity.
+     */
+    bool republishDiscovery();
 
 #ifdef ARDUINOHA_TEST
     inline HASerializer* getSerializer() const
@@ -130,6 +172,12 @@ protected:
         const char* uniqueId,
         const __FlashStringHelper* topic
     );
+
+    /**
+     * Returns true if this entity should publish the single-component
+     * discovery config on connect.
+     */
+    bool shouldPublishSingleComponentConfig() const;
 
     /**
      * This method should build serializer that will be used for publishing the configuration.
@@ -167,7 +215,7 @@ protected:
     /**
      * Publishes configuration of this device type on the HA discovery topic.
      */
-    void publishConfig();
+    bool publishConfig();
 
     /**
      * Publishes current availability of the device type.
@@ -218,6 +266,29 @@ protected:
         bool isProgmemData = false
     );
 
+    /**
+     * Adds the preferred entity ID property to the serializer.
+     * `default_entity_id` takes precedence and the legacy `object_id` is only
+     * emitted when no default entity ID was configured.
+     */
+    void setEntityIdProperty(HASerializer* serializer) const;
+
+    /**
+     * Returns a string pointer if it is non-empty, otherwise nullptr.
+     */
+    static const char* nonEmptyString(const char* value);
+
+    /**
+     * Builds a serializer used as a device discovery component payload.
+     * Unsupported entities return nullptr.
+     */
+    virtual HASerializer* buildDeviceDiscoverySerializer();
+
+    /**
+     * Returns true when the entity can be included in MQTT device discovery.
+     */
+    virtual bool supportsDeviceDiscovery() const;
+
     /// The component name that was assigned via the constructor.
     const __FlashStringHelper* const _componentName;
 
@@ -229,6 +300,12 @@ protected:
 
     /// The object ID that was set using setObjectId method. It can be nullptr.
     const char* _objectId;
+
+    /// The default entity ID used by Home Assistant on first discovery.
+    const char* _defaultEntityId;
+
+    /// The entity category for the entity. It can be nullptr.
+    const char* _entityCategory;
 
     /// HASerializer that belongs to this device type. It can be nullptr.
     HASerializer* _serializer;

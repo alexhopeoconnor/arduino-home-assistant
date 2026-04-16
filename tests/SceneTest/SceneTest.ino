@@ -29,6 +29,7 @@ static const char* testUniqueId = "uniqueScene";
 static ActivateCallback lastActivateCallbackCall;
 
 const char ConfigTopic[] PROGMEM = {"homeassistant/scene/testDevice/uniqueScene/config"};
+const char DeviceConfigTopic[] PROGMEM = {"homeassistant/device/testDevice/config"};
 const char CommandTopic[] PROGMEM = {"testData/testDevice/uniqueScene/cmd_t"};
 const char CommandMessage[] PROGMEM = {"on"};
 
@@ -80,6 +81,33 @@ AHA_TEST(SceneTest, extended_unique_id) {
             "\"cmd_t\":\"testData/testDevice/uniqueScene/cmd_t\""
             "}"
         )
+    )
+}
+
+AHA_TEST(SceneTest, device_discovery_payload) {
+    prepareTest
+
+    mqtt.enableDeviceDiscovery();
+    HAScene scene(testUniqueId);
+    mqtt.loop();
+
+    assertSingleMqttMessage(
+        AHATOFSTR(DeviceConfigTopic),
+        (
+            "{"
+            "\"dev\":{\"ids\":\"testDevice\"},"
+            "\"o\":{\"name\":\"ArduinoHA\",\"sw\":\"2.1.0\"},"
+            "\"cmps\":{"
+                "\"uniqueScene\":{"
+                    "\"p\":\"scene\","
+                    "\"uniq_id\":\"uniqueScene\","
+                    "\"pl_on\":\"ON\","
+                    "\"cmd_t\":\"testData/testDevice/uniqueScene/cmd_t\""
+                "}"
+            "}"
+            "}"
+        ),
+        true
     )
 }
 
@@ -142,6 +170,46 @@ AHA_TEST(SceneTest, object_id_setter) {
             "{"
             "\"obj_id\":\"testId\","
             "\"uniq_id\":\"uniqueScene\","
+            "\"pl_on\":\"ON\","
+            "\"cmd_t\":\"testData/testDevice/uniqueScene/cmd_t\""
+            "}"
+        )
+    )
+}
+
+AHA_TEST(SceneTest, default_entity_id_setter) {
+    prepareTest
+
+    HAScene scene(testUniqueId);
+    scene.setDefaultEntityId("scene.test_scene");
+
+    assertEntityConfig(
+        mock,
+        scene,
+        (
+            "{"
+            "\"def_ent_id\":\"scene.test_scene\","
+            "\"uniq_id\":\"uniqueScene\","
+            "\"pl_on\":\"ON\","
+            "\"cmd_t\":\"testData/testDevice/uniqueScene/cmd_t\""
+            "}"
+        )
+    )
+}
+
+AHA_TEST(SceneTest, entity_category_setter) {
+    prepareTest
+
+    HAScene scene(testUniqueId);
+    scene.setEntityCategory("diagnostic");
+
+    assertEntityConfig(
+        mock,
+        scene,
+        (
+            "{"
+            "\"uniq_id\":\"uniqueScene\","
+            "\"ent_cat\":\"diagnostic\","
             "\"pl_on\":\"ON\","
             "\"cmd_t\":\"testData/testDevice/uniqueScene/cmd_t\""
             "}"

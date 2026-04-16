@@ -32,6 +32,7 @@ static const char* testUniqueId = "uniqueLock";
 static CommandCallback lastCommandCallbackCall;
 
 const char ConfigTopic[] PROGMEM = {"homeassistant/lock/testDevice/uniqueLock/config"};
+const char DeviceConfigTopic[] PROGMEM = {"homeassistant/device/testDevice/config"};
 const char CommandTopic[] PROGMEM = {"testData/testDevice/uniqueLock/cmd_t"};
 const char StateTopic[] PROGMEM = {"testData/testDevice/uniqueLock/stat_t"};
 
@@ -89,6 +90,33 @@ AHA_TEST(LockTest, extended_unique_id) {
         )
     )
     assertEqual(1, mock->getFlushedMessagesNb()); // only config should be pushed
+}
+
+AHA_TEST(LockTest, device_discovery_payload) {
+    prepareTest
+
+    mqtt.enableDeviceDiscovery();
+    HALock lock(testUniqueId);
+    mqtt.loop();
+
+    assertSingleMqttMessage(
+        AHATOFSTR(DeviceConfigTopic),
+        (
+            "{"
+            "\"dev\":{\"ids\":\"testDevice\"},"
+            "\"o\":{\"name\":\"ArduinoHA\",\"sw\":\"2.1.0\"},"
+            "\"cmps\":{"
+                "\"uniqueLock\":{"
+                    "\"p\":\"lock\","
+                    "\"uniq_id\":\"uniqueLock\","
+                    "\"stat_t\":\"testData/testDevice/uniqueLock/stat_t\","
+                    "\"cmd_t\":\"testData/testDevice/uniqueLock/cmd_t\""
+                "}"
+            "}"
+            "}"
+        ),
+        true
+    )
 }
 
 AHA_TEST(LockTest, command_subscription) {
@@ -173,6 +201,48 @@ AHA_TEST(LockTest, object_id_setter) {
             "{"
             "\"obj_id\":\"testId\","
             "\"uniq_id\":\"uniqueLock\","
+            "\"dev\":{\"ids\":\"testDevice\"},"
+            "\"stat_t\":\"testData/testDevice/uniqueLock/stat_t\","
+            "\"cmd_t\":\"testData/testDevice/uniqueLock/cmd_t\""
+            "}"
+        )
+    )
+}
+
+AHA_TEST(LockTest, default_entity_id_setter) {
+    prepareTest
+
+    HALock lock(testUniqueId);
+    lock.setDefaultEntityId("lock.test_lock");
+
+    assertEntityConfig(
+        mock,
+        lock,
+        (
+            "{"
+            "\"def_ent_id\":\"lock.test_lock\","
+            "\"uniq_id\":\"uniqueLock\","
+            "\"dev\":{\"ids\":\"testDevice\"},"
+            "\"stat_t\":\"testData/testDevice/uniqueLock/stat_t\","
+            "\"cmd_t\":\"testData/testDevice/uniqueLock/cmd_t\""
+            "}"
+        )
+    )
+}
+
+AHA_TEST(LockTest, entity_category_setter) {
+    prepareTest
+
+    HALock lock(testUniqueId);
+    lock.setEntityCategory("diagnostic");
+
+    assertEntityConfig(
+        mock,
+        lock,
+        (
+            "{"
+            "\"uniq_id\":\"uniqueLock\","
+            "\"ent_cat\":\"diagnostic\","
             "\"dev\":{\"ids\":\"testDevice\"},"
             "\"stat_t\":\"testData/testDevice/uniqueLock/stat_t\","
             "\"cmd_t\":\"testData/testDevice/uniqueLock/cmd_t\""

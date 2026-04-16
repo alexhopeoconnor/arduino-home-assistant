@@ -30,13 +30,31 @@ void HATagScanner::buildSerializer()
     _serializer->topic(AHATOFSTR(HATopic));
 }
 
+HASerializer* HATagScanner::buildDeviceDiscoverySerializer()
+{
+    if (!uniqueId()) {
+        return nullptr;
+    }
+
+    HASerializer* serializer = new HASerializer(this, 2);
+    serializer->set(
+        AHATOFSTR(HAPlatformProperty),
+        AHATOFSTR(HAComponentTag),
+        HASerializer::ProgmemPropertyValue
+    );
+    serializer->topic(AHATOFSTR(HATopic));
+    return serializer;
+}
+
 void HATagScanner::onMqttConnected()
 {
     if (!uniqueId()) {
         return;
     }
 
-    publishConfig();
+    if (shouldPublishSingleComponentConfig()) {
+        publishConfig();
+    }
 }
 
 #endif

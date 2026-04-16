@@ -111,15 +111,6 @@ public:
         { _class = deviceClass; }
 
     /**
-     * Sets the entity category for the number.
-     * See: https://www.home-assistant.io/integrations/number.mqtt/#entity_category
-     *
-     * @param entityCategory The category name.
-     */
-    inline void setEntityCategory(const char* entityCategory)
-        { _entityCategory = entityCategory; }
-
-    /**
      * Sets icon of the number.
      * Any icon from MaterialDesignIcons.com (for example: `mdi:home`).
      *
@@ -230,6 +221,9 @@ public:
 
 protected:
     virtual void buildSerializer() override;
+    virtual HASerializer* buildDeviceDiscoverySerializer() override;
+    virtual bool supportsDeviceDiscovery() const override
+        { return true; }
     virtual void onMqttConnected() override;
     virtual void onMqttMessage(
         const char* topic,
@@ -269,9 +263,6 @@ private:
 
     /// The device class. It can be nullptr.
     const char* _class;
-
-    /// The entity category for the number. It can be nullptr.
-    const char* _entityCategory;
 
     /// The icon of the number. It can be nullptr.
     const char* _icon;

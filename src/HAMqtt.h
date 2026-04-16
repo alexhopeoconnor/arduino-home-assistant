@@ -118,6 +118,25 @@ public:
         { return _dataPrefix; }
 
     /**
+     * Enables MQTT device discovery payloads.
+     * Single-component discovery remains the default when this is not enabled.
+     */
+    inline void enableDeviceDiscovery()
+        { _deviceDiscoveryEnabled = true; }
+
+    /**
+     * Returns true when MQTT device discovery payloads are enabled.
+     */
+    inline bool isDeviceDiscoveryEnabled() const
+        { return _deviceDiscoveryEnabled; }
+
+    /**
+     * Republishes the current MQTT device discovery payload when device
+     * discovery is enabled.
+     */
+    bool publishDeviceDiscovery();
+
+    /**
      * Returns instance of the device assigned to the HAMqtt class.
      * It's the same object (pointer) that was passed to the HAMqtt constructor.
      */
@@ -447,6 +466,9 @@ private:
 
     /// The data prefix that's used for publishing data messages.
     const char* _dataPrefix;
+
+    /// Enables MQTT device discovery mode when set to true.
+    bool _deviceDiscoveryEnabled;
 
     /// The username used for the authentication. It's set in the HAMqtt::begin method.
     const char* _username;

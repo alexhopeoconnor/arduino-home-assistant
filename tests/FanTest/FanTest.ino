@@ -54,6 +54,7 @@ static StateCallback lastStateCallbackCall;
 static SpeedCallback lastSpeedCallbackCall;
 
 const char ConfigTopic[] PROGMEM = {"homeassistant/fan/testDevice/uniqueFan/config"};
+const char DeviceConfigTopic[] PROGMEM = {"homeassistant/device/testDevice/config"};
 const char StateTopic[] PROGMEM = {"testData/testDevice/uniqueFan/stat_t"};
 const char SpeedPercentageTopic[] PROGMEM = {"testData/testDevice/uniqueFan/pct_stat_t"};
 const char StateCommandTopic[] PROGMEM = {"testData/testDevice/uniqueFan/cmd_t"};
@@ -120,6 +121,36 @@ AHA_TEST(FanTest, extended_unique_id) {
         )
     )
     assertEqual(2, mock->getFlushedMessagesNb()); // config + default state
+}
+
+AHA_TEST(FanTest, device_discovery_payload) {
+    prepareTest
+
+    mqtt.enableDeviceDiscovery();
+    HAFan fan(testUniqueId);
+    mqtt.loop();
+
+    assertEqual(2, mock->getFlushedMessagesNb());
+    assertMqttMessage(
+        0,
+        AHATOFSTR(DeviceConfigTopic),
+        (
+            "{"
+            "\"dev\":{\"ids\":\"testDevice\"},"
+            "\"o\":{\"name\":\"ArduinoHA\",\"sw\":\"2.1.0\"},"
+            "\"cmps\":{"
+                "\"uniqueFan\":{"
+                    "\"p\":\"fan\","
+                    "\"uniq_id\":\"uniqueFan\","
+                    "\"stat_t\":\"testData/testDevice/uniqueFan/stat_t\","
+                    "\"cmd_t\":\"testData/testDevice/uniqueFan/cmd_t\""
+                "}"
+            "}"
+            "}"
+        ),
+        true
+    )
+    assertMqttMessage(1, AHATOFSTR(StateTopic), "OFF", true)
 }
 
 AHA_TEST(FanTest, default_params_with_speed) {
@@ -253,6 +284,48 @@ AHA_TEST(FanTest, object_id_setter) {
             "{"
             "\"obj_id\":\"testId\","
             "\"uniq_id\":\"uniqueFan\","
+            "\"dev\":{\"ids\":\"testDevice\"},"
+            "\"stat_t\":\"testData/testDevice/uniqueFan/stat_t\","
+            "\"cmd_t\":\"testData/testDevice/uniqueFan/cmd_t\""
+            "}"
+        )
+    )
+}
+
+AHA_TEST(FanTest, default_entity_id_setter) {
+    prepareTest
+
+    HAFan fan(testUniqueId);
+    fan.setDefaultEntityId("fan.test_fan");
+
+    assertEntityConfig(
+        mock,
+        fan,
+        (
+            "{"
+            "\"def_ent_id\":\"fan.test_fan\","
+            "\"uniq_id\":\"uniqueFan\","
+            "\"dev\":{\"ids\":\"testDevice\"},"
+            "\"stat_t\":\"testData/testDevice/uniqueFan/stat_t\","
+            "\"cmd_t\":\"testData/testDevice/uniqueFan/cmd_t\""
+            "}"
+        )
+    )
+}
+
+AHA_TEST(FanTest, entity_category_setter) {
+    prepareTest
+
+    HAFan fan(testUniqueId);
+    fan.setEntityCategory("diagnostic");
+
+    assertEntityConfig(
+        mock,
+        fan,
+        (
+            "{"
+            "\"uniq_id\":\"uniqueFan\","
+            "\"ent_cat\":\"diagnostic\","
             "\"dev\":{\"ids\":\"testDevice\"},"
             "\"stat_t\":\"testData/testDevice/uniqueFan/stat_t\","
             "\"cmd_t\":\"testData/testDevice/uniqueFan/cmd_t\""

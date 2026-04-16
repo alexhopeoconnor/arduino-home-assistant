@@ -142,6 +142,7 @@ static ModeCallback lastModeCallbackCall;
 static TargetTempCallback lastTargetTempCallbackCall;
 
 const char ConfigTopic[] PROGMEM = {"homeassistant/climate/testDevice/uniqueHVAC/config"};
+const char DeviceConfigTopic[] PROGMEM = {"homeassistant/device/testDevice/config"};
 const char CurrentTemperatureTopic[] PROGMEM = {"testData/testDevice/uniqueHVAC/curr_temp_t"};
 const char ActionTopic[] PROGMEM = {"testData/testDevice/uniqueHVAC/act_t"};
 const char AuxStateTopic[] PROGMEM = {"testData/testDevice/uniqueHVAC/aux_stat_t"};
@@ -243,6 +244,32 @@ AHA_TEST(HVACTest, extended_unique_id) {
         )
     )
     assertEqual(1, mock->getFlushedMessagesNb()); // config
+}
+
+AHA_TEST(HVACTest, device_discovery_payload) {
+    prepareTest
+
+    mqtt.enableDeviceDiscovery();
+    HAHVAC hvac(testUniqueId);
+    mqtt.loop();
+
+    assertSingleMqttMessage(
+        AHATOFSTR(DeviceConfigTopic),
+        (
+            "{"
+            "\"dev\":{\"ids\":\"testDevice\"},"
+            "\"o\":{\"name\":\"ArduinoHA\",\"sw\":\"2.1.0\"},"
+            "\"cmps\":{"
+                "\"uniqueHVAC\":{"
+                    "\"p\":\"climate\","
+                    "\"uniq_id\":\"uniqueHVAC\","
+                    "\"curr_temp_t\":\"testData/testDevice/uniqueHVAC/curr_temp_t\""
+                "}"
+            "}"
+            "}"
+        ),
+        true
+    )
 }
 
 AHA_TEST(HVACTest, config_with_action) {
@@ -561,6 +588,46 @@ AHA_TEST(HVACTest, object_id_setter) {
             "{"
             "\"obj_id\":\"testId\","
             "\"uniq_id\":\"uniqueHVAC\","
+            "\"curr_temp_t\":\"testData/testDevice/uniqueHVAC/curr_temp_t\","
+            "\"dev\":{\"ids\":\"testDevice\"}"
+            "}"
+        )
+    )
+}
+
+AHA_TEST(HVACTest, default_entity_id_setter) {
+    prepareTest
+
+    HAHVAC hvac(testUniqueId);
+    hvac.setDefaultEntityId("climate.test_hvac");
+
+    assertEntityConfig(
+        mock,
+        hvac,
+        (
+            "{"
+            "\"def_ent_id\":\"climate.test_hvac\","
+            "\"uniq_id\":\"uniqueHVAC\","
+            "\"curr_temp_t\":\"testData/testDevice/uniqueHVAC/curr_temp_t\","
+            "\"dev\":{\"ids\":\"testDevice\"}"
+            "}"
+        )
+    )
+}
+
+AHA_TEST(HVACTest, entity_category_setter) {
+    prepareTest
+
+    HAHVAC hvac(testUniqueId);
+    hvac.setEntityCategory("diagnostic");
+
+    assertEntityConfig(
+        mock,
+        hvac,
+        (
+            "{"
+            "\"uniq_id\":\"uniqueHVAC\","
+            "\"ent_cat\":\"diagnostic\","
             "\"curr_temp_t\":\"testData/testDevice/uniqueHVAC/curr_temp_t\","
             "\"dev\":{\"ids\":\"testDevice\"}"
             "}"

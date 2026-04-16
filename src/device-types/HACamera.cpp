@@ -27,10 +27,11 @@ void HACamera::buildSerializer()
         return;
     }
 
-    _serializer = new HASerializer(this, 8); // 8 - max properties nb
+    _serializer = new HASerializer(this, 9); // 9 - max properties nb
     _serializer->set(AHATOFSTR(HANameProperty), _name);
-    _serializer->set(AHATOFSTR(HAObjectIdProperty), _objectId);
+    setEntityIdProperty(_serializer);
     _serializer->set(HASerializer::WithUniqueId);
+    _serializer->set(AHATOFSTR(HAStateEntityCategory), nonEmptyString(_entityCategory));
     _serializer->set(AHATOFSTR(HAIconProperty), _icon);
     _serializer->set(
         AHATOFSTR(HAEncodingProperty),
@@ -42,13 +43,42 @@ void HACamera::buildSerializer()
     _serializer->topic(AHATOFSTR(HATopic));
 }
 
+HASerializer* HACamera::buildDeviceDiscoverySerializer()
+{
+    if (!uniqueId()) {
+        return nullptr;
+    }
+
+    HASerializer* serializer = new HASerializer(this, 9);
+    serializer->set(
+        AHATOFSTR(HAPlatformProperty),
+        AHATOFSTR(HAComponentCamera),
+        HASerializer::ProgmemPropertyValue
+    );
+    serializer->set(AHATOFSTR(HANameProperty), _name);
+    setEntityIdProperty(serializer);
+    serializer->set(HASerializer::WithUniqueId);
+    serializer->set(AHATOFSTR(HAStateEntityCategory), nonEmptyString(_entityCategory));
+    serializer->set(AHATOFSTR(HAIconProperty), _icon);
+    serializer->set(
+        AHATOFSTR(HAEncodingProperty),
+        getEncodingProperty(),
+        HASerializer::ProgmemPropertyValue
+    );
+    serializer->set(HASerializer::WithAvailability);
+    serializer->topic(AHATOFSTR(HATopic));
+    return serializer;
+}
+
 void HACamera::onMqttConnected()
 {
     if (!uniqueId()) {
         return;
     }
 
-    publishConfig();
+    if (shouldPublishSingleComponentConfig()) {
+        publishConfig();
+    }
     publishAvailability();
 }
 

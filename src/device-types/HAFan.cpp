@@ -59,10 +59,11 @@ void HAFan::buildSerializer()
         return;
     }
 
-    _serializer = new HASerializer(this, 14); // 14 - max properties nb
+    _serializer = new HASerializer(this, 15); // 15 - max properties nb
     _serializer->set(AHATOFSTR(HANameProperty), _name);
-    _serializer->set(AHATOFSTR(HAObjectIdProperty), _objectId);
+    setEntityIdProperty(_serializer);
     _serializer->set(HASerializer::WithUniqueId);
+    _serializer->set(AHATOFSTR(HAStateEntityCategory), nonEmptyString(_entityCategory));
     _serializer->set(AHATOFSTR(HAIconProperty), _icon);
 
     if (_retain) {
@@ -108,13 +109,76 @@ void HAFan::buildSerializer()
     _serializer->topic(AHATOFSTR(HACommandTopic));
 }
 
+HASerializer* HAFan::buildDeviceDiscoverySerializer()
+{
+    if (!uniqueId()) {
+        return nullptr;
+    }
+
+    HASerializer* serializer = new HASerializer(this, 15);
+    serializer->set(
+        AHATOFSTR(HAPlatformProperty),
+        AHATOFSTR(HAComponentFan),
+        HASerializer::ProgmemPropertyValue
+    );
+    serializer->set(AHATOFSTR(HANameProperty), _name);
+    setEntityIdProperty(serializer);
+    serializer->set(HASerializer::WithUniqueId);
+    serializer->set(AHATOFSTR(HAStateEntityCategory), nonEmptyString(_entityCategory));
+    serializer->set(AHATOFSTR(HAIconProperty), _icon);
+
+    if (_retain) {
+        serializer->set(
+            AHATOFSTR(HARetainProperty),
+            &_retain,
+            HASerializer::BoolPropertyType
+        );
+    }
+
+    if (_optimistic) {
+        serializer->set(
+            AHATOFSTR(HAOptimisticProperty),
+            &_optimistic,
+            HASerializer::BoolPropertyType
+        );
+    }
+
+    if (_features & SpeedsFeature) {
+        serializer->topic(AHATOFSTR(HAPercentageStateTopic));
+        serializer->topic(AHATOFSTR(HAPercentageCommandTopic));
+
+        if (_speedRangeMax.isSet()) {
+            serializer->set(
+                AHATOFSTR(HASpeedRangeMaxProperty),
+                &_speedRangeMax,
+                HASerializer::NumberPropertyType
+            );
+        }
+
+        if (_speedRangeMin.isSet()) {
+            serializer->set(
+                AHATOFSTR(HASpeedRangeMinProperty),
+                &_speedRangeMin,
+                HASerializer::NumberPropertyType
+            );
+        }
+    }
+
+    serializer->set(HASerializer::WithAvailability);
+    serializer->topic(AHATOFSTR(HAStateTopic));
+    serializer->topic(AHATOFSTR(HACommandTopic));
+    return serializer;
+}
+
 void HAFan::onMqttConnected()
 {
     if (!uniqueId()) {
         return;
     }
 
-    publishConfig();
+    if (shouldPublishSingleComponentConfig()) {
+        publishConfig();
+    }
     publishAvailability();
 
     if (!_retain) {

@@ -32,6 +32,7 @@ static const char* testUniqueId = "uniqueCover";
 static CommandCallback lastCommandCallbackCall;
 
 const char ConfigTopic[] PROGMEM = {"homeassistant/cover/testDevice/uniqueCover/config"};
+const char DeviceConfigTopic[] PROGMEM = {"homeassistant/device/testDevice/config"};
 const char StateTopic[] PROGMEM = {"testData/testDevice/uniqueCover/stat_t"};
 const char PositionTopic[] PROGMEM = {"testData/testDevice/uniqueCover/pos_t"};
 const char CommandTopic[] PROGMEM = {"testData/testDevice/uniqueCover/cmd_t"};
@@ -90,6 +91,33 @@ AHA_TEST(CoverTest, extended_unique_id) {
         )
     )
     assertEqual(1, mock->getFlushedMessagesNb()); // only config should be pushed
+}
+
+AHA_TEST(CoverTest, device_discovery_payload) {
+    prepareTest
+
+    mqtt.enableDeviceDiscovery();
+    HACover cover(testUniqueId);
+    mqtt.loop();
+
+    assertSingleMqttMessage(
+        AHATOFSTR(DeviceConfigTopic),
+        (
+            "{"
+            "\"dev\":{\"ids\":\"testDevice\"},"
+            "\"o\":{\"name\":\"ArduinoHA\",\"sw\":\"2.1.0\"},"
+            "\"cmps\":{"
+                "\"uniqueCover\":{"
+                    "\"p\":\"cover\","
+                    "\"uniq_id\":\"uniqueCover\","
+                    "\"stat_t\":\"testData/testDevice/uniqueCover/stat_t\","
+                    "\"cmd_t\":\"testData/testDevice/uniqueCover/cmd_t\""
+                "}"
+            "}"
+            "}"
+        ),
+        true
+    )
 }
 
 AHA_TEST(CoverTest, default_params_with_position) {
@@ -217,6 +245,27 @@ AHA_TEST(CoverTest, object_id_setter) {
     )
 }
 
+AHA_TEST(CoverTest, default_entity_id_setter) {
+    prepareTest
+
+    HACover cover(testUniqueId);
+    cover.setDefaultEntityId("cover.test_cover");
+
+    assertEntityConfig(
+        mock,
+        cover,
+        (
+            "{"
+            "\"def_ent_id\":\"cover.test_cover\","
+            "\"uniq_id\":\"uniqueCover\","
+            "\"dev\":{\"ids\":\"testDevice\"},"
+            "\"stat_t\":\"testData/testDevice/uniqueCover/stat_t\","
+            "\"cmd_t\":\"testData/testDevice/uniqueCover/cmd_t\""
+            "}"
+        )
+    )
+}
+
 AHA_TEST(CoverTest, device_class) {
     prepareTest
 
@@ -230,6 +279,27 @@ AHA_TEST(CoverTest, device_class) {
             "{"
             "\"uniq_id\":\"uniqueCover\","
             "\"dev_cla\":\"testClass\","
+            "\"dev\":{\"ids\":\"testDevice\"},"
+            "\"stat_t\":\"testData/testDevice/uniqueCover/stat_t\","
+            "\"cmd_t\":\"testData/testDevice/uniqueCover/cmd_t\""
+            "}"
+        )
+    )
+}
+
+AHA_TEST(CoverTest, entity_category_setter) {
+    prepareTest
+
+    HACover cover(testUniqueId);
+    cover.setEntityCategory("diagnostic");
+
+    assertEntityConfig(
+        mock,
+        cover,
+        (
+            "{"
+            "\"uniq_id\":\"uniqueCover\","
+            "\"ent_cat\":\"diagnostic\","
             "\"dev\":{\"ids\":\"testDevice\"},"
             "\"stat_t\":\"testData/testDevice/uniqueCover/stat_t\","
             "\"cmd_t\":\"testData/testDevice/uniqueCover/cmd_t\""
