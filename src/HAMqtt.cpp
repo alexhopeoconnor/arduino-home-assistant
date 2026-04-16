@@ -60,7 +60,8 @@ HAMqtt::HAMqtt(
     HADevice& device,
     uint8_t maxDevicesTypesNb
 ) :
-    _mqtt(new PubSubClient(netClient)),
+    _mqttStorage(netClient),
+    _mqtt(&_mqttStorage),
     HAMQTT_INIT
 {
     _instance = this;
@@ -71,9 +72,11 @@ HAMqtt::~HAMqtt()
 {
     delete[] _devicesTypes;
 
+#ifdef ARDUINOHA_TEST
     if (_mqtt) {
         delete _mqtt;
     }
+#endif
 
     _instance = nullptr;
 }

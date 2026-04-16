@@ -14,7 +14,7 @@
 #ifdef ARDUINOHA_TEST
 class PubSubClientMock;
 #else
-class PubSubClient;
+#include <PubSubClient.h>
 #endif
 
 #if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168__)
@@ -417,7 +417,10 @@ private:
 #ifdef ARDUINOHA_TEST
     PubSubClientMock* _mqtt;
 #else
-    /// Instance of the PubSubClient class. It's initialized in the constructor.
+    /// Storage for the PubSubClient instance used in production builds.
+    PubSubClient _mqttStorage;
+
+    /// Pointer to the active MQTT client implementation.
     PubSubClient* _mqtt;
 #endif
 

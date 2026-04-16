@@ -37,6 +37,8 @@ public:
         const char* uniqueId
     );
 
+    virtual ~HABaseDeviceType();
+
     /**
      * Returns unique ID of the device type.
      */

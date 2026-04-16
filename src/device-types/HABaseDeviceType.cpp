@@ -20,6 +20,11 @@ HABaseDeviceType::HABaseDeviceType(
     }
 }
 
+HABaseDeviceType::~HABaseDeviceType()
+{
+    destroySerializer();
+}
+
 void HABaseDeviceType::setAvailability(bool online)
 {
     _availability = (online ? AvailabilityOnline : AvailabilityOffline);
