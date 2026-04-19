@@ -1,7 +1,7 @@
 # Arduino Home Assistant integration 🏠
 
 [![](https://img.shields.io/github/v/release/alexhopeoconnor/arduino-home-assistant?label=Version)](https://github.com/alexhopeoconnor/arduino-home-assistant/releases)
-[![](https://img.shields.io/badge/Browse_Documentation-40BC13)](https://dawidchyrzynski.github.io/arduino-home-assistant/)
+[![](https://img.shields.io/badge/Documentation-40BC13)](https://github.com/alexhopeoconnor/arduino-home-assistant/blob/main/docs/README.md)
 [![](https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&color=%23fe8e86)](https://github.com/sponsors/dawidchyrzynski)
 
 ArduinoHA allows to integrate an Arduino/ESP based device with Home Assistant using MQTT.
@@ -28,8 +28,8 @@ lib_deps =
 * Support for custom MQTT messages (publishing and subscribing)
 * Auto reconnect with MQTT broker
 * Reporting availability (online/offline states) of a device
-* Doxygen documentation for all classes
-* Covered by unit tests (AUnit + EpoxyDuino + AUniter)
+* Markdown documentation in [`docs/`](docs/README.md); class-level notes in headers under `src/`
+* Covered by unit tests ([PlatformIO](https://platformio.org/) + [Unity](https://github.com/ThrowTheSwitch/Unity); see `test/test_*`)
 
 ## Discovery Notes
 

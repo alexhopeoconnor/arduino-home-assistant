@@ -25,7 +25,6 @@
 #include "utils/HANumeric.h"
 
 #ifdef ARDUINOHA_TEST
-#include "mocks/AUnitHelpers.h"
 #include "mocks/PubSubClientMock.h"
 #include "utils/HADictionary.h"
 #include "utils/HASerializer.h"

@@ -1,4 +1,8 @@
-docsrc/xml
-docsrc/build
 .DS_Store
 tmp/
+
+# PlatformIO build output
+.pio/
+
+# Sphinx inventory (legacy); we ship Markdown-only under docs/
+docs/*.inv

@@ -1,0 +1,135 @@
+#ifndef AHA_TEST_MAIN_ENTITIES_BASIC_H
+#define AHA_TEST_MAIN_ENTITIES_BASIC_H
+
+#include <Arduino.h>
+
+using TestFn = void (*)(void);
+
+struct TestCase {
+    const char* name;
+    TestFn fn;
+    uint16_t line;
+};
+
+#define TEST_ENTRY(fn) { #fn, fn, __LINE__ }
+
+extern void test_BinarySensorTest_availability(void);
+extern void test_BinarySensorTest_default_params(void);
+extern void test_BinarySensorTest_default_state_false(void);
+extern void test_BinarySensorTest_default_state_true(void);
+extern void test_BinarySensorTest_device_class(void);
+extern void test_BinarySensorTest_entity_category_setter(void);
+extern void test_BinarySensorTest_expire_after_setter(void);
+extern void test_BinarySensorTest_expire_after_zero_setter(void);
+extern void test_BinarySensorTest_extended_unique_id(void);
+extern void test_BinarySensorTest_icon_setter(void);
+extern void test_BinarySensorTest_invalid_unique_id(void);
+extern void test_BinarySensorTest_name_setter(void);
+extern void test_BinarySensorTest_object_id_setter(void);
+extern void test_BinarySensorTest_publish_initial_state(void);
+extern void test_BinarySensorTest_publish_state_debounce(void);
+extern void test_BinarySensorTest_publish_state_debounce_skip(void);
+extern void test_BinarySensorTest_publish_state_off(void);
+extern void test_BinarySensorTest_publish_state_on(void);
+extern void test_ButtonTest_availability(void);
+extern void test_ButtonTest_command_callback(void);
+extern void test_ButtonTest_command_subscription(void);
+extern void test_ButtonTest_default_params(void);
+extern void test_ButtonTest_device_class(void);
+extern void test_ButtonTest_different_button_command(void);
+extern void test_ButtonTest_entity_category_setter(void);
+extern void test_ButtonTest_extended_unique_id(void);
+extern void test_ButtonTest_icon_setter(void);
+extern void test_ButtonTest_invalid_unique_id(void);
+extern void test_ButtonTest_name_setter(void);
+extern void test_ButtonTest_no_command_callback(void);
+extern void test_ButtonTest_object_id_setter(void);
+extern void test_ButtonTest_retain_setter(void);
+extern void test_SensorNumberTest_dont_publish_default_value_on_connect(void);
+extern void test_SensorNumberTest_publish_debounce(void);
+extern void test_SensorNumberTest_publish_force(void);
+extern void test_SensorNumberTest_publish_int16(void);
+extern void test_SensorNumberTest_publish_int32(void);
+extern void test_SensorNumberTest_publish_int32_signed(void);
+extern void test_SensorNumberTest_publish_int8(void);
+extern void test_SensorNumberTest_publish_int_zero(void);
+extern void test_SensorNumberTest_publish_p0(void);
+extern void test_SensorNumberTest_publish_p0_zero_signed(void);
+extern void test_SensorNumberTest_publish_p0_zero_unsigned(void);
+extern void test_SensorNumberTest_publish_p1(void);
+extern void test_SensorNumberTest_publish_p1_zero_signed(void);
+extern void test_SensorNumberTest_publish_p1_zero_unsigned(void);
+extern void test_SensorNumberTest_publish_p2(void);
+extern void test_SensorNumberTest_publish_p2_zero_signed(void);
+extern void test_SensorNumberTest_publish_p2_zero_unsigned(void);
+extern void test_SensorNumberTest_publish_p3(void);
+extern void test_SensorNumberTest_publish_p3_smaller(void);
+extern void test_SensorNumberTest_publish_p3_zero_signed(void);
+extern void test_SensorNumberTest_publish_p3_zero_unsigned(void);
+extern void test_SensorNumberTest_publish_precision_mismatch(void);
+extern void test_SensorNumberTest_publish_uint16(void);
+extern void test_SensorNumberTest_publish_uint32(void);
+extern void test_SensorNumberTest_publish_uint8(void);
+extern void test_SensorNumberTest_publish_value_on_connect(void);
+extern void test_SensorTest_availability(void);
+extern void test_SensorTest_default_entity_id_setter(void);
+extern void test_SensorTest_default_params(void);
+extern void test_SensorTest_device_class_setter(void);
+extern void test_SensorTest_empty_unit_of_measurement_is_ignored(void);
+extern void test_SensorTest_entity_category_setter(void);
+extern void test_SensorTest_expire_after_setter(void);
+extern void test_SensorTest_expire_after_zero_setter(void);
+extern void test_SensorTest_extended_unique_id(void);
+extern void test_SensorTest_force_update_setter(void);
+extern void test_SensorTest_icon_setter(void);
+extern void test_SensorTest_invalid_unique_id(void);
+extern void test_SensorTest_json_attributes_topic(void);
+extern void test_SensorTest_name_setter(void);
+extern void test_SensorTest_object_id_setter(void);
+extern void test_SensorTest_publish_json_attributes(void);
+extern void test_SensorTest_publish_null_value(void);
+extern void test_SensorTest_publish_value(void);
+extern void test_SensorTest_state_class_setter(void);
+extern void test_SensorTest_unit_of_measurement_setter(void);
+extern void test_SwitchTest_availability(void);
+extern void test_SwitchTest_command_off(void);
+extern void test_SwitchTest_command_on(void);
+extern void test_SwitchTest_command_subscription(void);
+extern void test_SwitchTest_current_state_setter(void);
+extern void test_SwitchTest_default_entity_id_setter(void);
+extern void test_SwitchTest_default_params(void);
+extern void test_SwitchTest_device_class(void);
+extern void test_SwitchTest_device_discovery_payload(void);
+extern void test_SwitchTest_different_switch_command(void);
+extern void test_SwitchTest_entity_category_setter(void);
+extern void test_SwitchTest_extended_unique_id(void);
+extern void test_SwitchTest_icon_setter(void);
+extern void test_SwitchTest_invalid_unique_id(void);
+extern void test_SwitchTest_name_setter(void);
+extern void test_SwitchTest_object_id_setter(void);
+extern void test_SwitchTest_optimistic_setter(void);
+extern void test_SwitchTest_publish_last_known_state(void);
+extern void test_SwitchTest_publish_nothing_if_retained(void);
+extern void test_SwitchTest_publish_state_off(void);
+extern void test_SwitchTest_publish_state_on(void);
+extern void test_SwitchTest_retain_setter(void);
+extern void test_TextTest_availability(void);
+extern void test_TextTest_command_callback(void);
+extern void test_TextTest_command_subscription(void);
+extern void test_TextTest_default_params(void);
+extern void test_TextTest_different_text_command(void);
+extern void test_TextTest_extended_unique_id(void);
+extern void test_TextTest_icon_setter(void);
+extern void test_TextTest_invalid_unique_id(void);
+extern void test_TextTest_min_max_pattern_setters(void);
+extern void test_TextTest_mode_setter_password(void);
+extern void test_TextTest_name_setter(void);
+extern void test_TextTest_object_id_setter(void);
+extern void test_TextTest_optimistic_setter(void);
+extern void test_TextTest_publish_last_known_state(void);
+extern void test_TextTest_publish_nothing_if_retained(void);
+extern void test_TextTest_publish_state(void);
+extern void test_TextTest_publish_state_debounce(void);
+extern void test_TextTest_retain_setter(void);
+
+#endif

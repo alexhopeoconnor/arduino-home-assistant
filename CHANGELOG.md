@@ -15,6 +15,7 @@
 * Allow `HANumber` configurations where `min` is equal to `max`.
 
 **Migration notes:**
+* Unit tests now live under `test/` as PlatformIO Unity suites (`pio test`). The legacy `tests/` tree (AUnit, EpoxyDuino, Make, AUniter) has been removed.
 * Home Assistant deprecated MQTT `object_id` in favor of `default_entity_id`, and newer Home Assistant versions may warn on or remove `object_id` handling in discovery payloads.
 * Existing code using `setObjectId()` remains supported as a legacy fallback, but new projects should migrate to `setDefaultEntityId()`.
 * If you enable device discovery mode, avoid publishing per-entity discovery topics manually. Use `republishDiscovery()` when a runtime config change needs to refresh discovery state.
