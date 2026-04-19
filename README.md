@@ -9,6 +9,17 @@ The library is designed to use as low resources (RAM/flash) as possible.
 Initially, it was optimized to work on Arduino Uno with Ethernet Shield,
 but I successfully use it on ESP8266/ESP8255 boards in my projects.
 
+## PlatformIO
+
+[`library.json`](library.json) declares the **PubSubClient** dependency for Library Manager / LDF. Example:
+
+```ini
+lib_deps =
+    https://github.com/alexhopeoconnor/arduino-home-assistant.git
+```
+
+(`library.properties` remains the source of truth for the Arduino IDE 1.x/2.x library manager name **home-assistant-integration**.)
+
 ## Features
 
 * Two-way communication (state reporting and command execution)

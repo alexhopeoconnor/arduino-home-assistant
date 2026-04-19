@@ -1,0 +1,50 @@
+{
+  "name": "home-assistant-integration",
+  "version": "2.1.0",
+  "description": "Home Assistant MQTT integration for Arduino (ArduinoHA): discovery, entities, and low resource use.",
+  "keywords": [
+    "mqtt",
+    "home-assistant",
+    "homeassistant",
+    "arduino",
+    "esp8266",
+    "esp32",
+    "communication",
+    "smarthome"
+  ],
+  "authors": [
+    {
+      "name": "Dawid Chyrzynski",
+      "email": "dev@chyrzynski.pl"
+    },
+    {
+      "name": "Alex Hope-O'Connor",
+      "email": "alex.hope.oconnor@pomonaqld.au",
+      "maintainer": true
+    }
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/alexhopeoconnor/arduino-home-assistant",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alexhopeoconnor/arduino-home-assistant.git"
+  },
+  "frameworks": "arduino",
+  "dependencies": [
+    {
+      "name": "knolleary/PubSubClient",
+      "version": "^2.8.0"
+    }
+  ],
+  "export": {
+    "include": [
+      "src",
+      "examples",
+      "library.properties",
+      "library.json",
+      "README.md",
+      "LICENSE",
+      "CHANGELOG.md"
+    ]
+  }
+}
