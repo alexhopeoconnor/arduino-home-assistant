@@ -56,7 +56,7 @@ device.enableLastWill();   // broker publishes offline when TCP drops
 
 Defined in `ArduinoHADefines.h` or via build flags.
 
-- **`ARDUINOHA_DEBUG`** — enables library logging (useful when debugging MQTT).
+- **`ARDUINOHA_DEBUG`** — enables library logging (useful when debugging MQTT). By default lines go to **`Serial`** unless you install a sink with **`arduinoHASetLogSink(ArduinoHALogSink*)`** (for example **DeviceFramework** forwards debug output into its main log stream).
 
 **Exclude unused device types** (saves flash from vtables), e.g.:
 

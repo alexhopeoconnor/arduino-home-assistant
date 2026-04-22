@@ -1,7 +1,9 @@
 // Turns on debug information of the ArduinoHA core.
-// Please note that you need to initialize serial interface manually
-// by calling Serial.begin([baudRate]) before initializing ArduinoHA.
+// Without a log sink (arduinoHASetLogSink), initialize Serial (e.g. Serial.begin(115200)) before ArduinoHA.
+// With a sink installed, the host is responsible for transport setup.
 // #define ARDUINOHA_DEBUG
+
+#include "ArduinoHALog.h"
 
 // These macros allow to exclude some parts of the library to save more resources.
 // #define EX_ARDUINOHA_BINARY_SENSOR
@@ -35,9 +37,15 @@
 #if defined(ARDUINOHA_DEBUG)
     #include <Arduino.h>
 
-    #define ARDUINOHA_DEBUG_INIT() Serial.begin(115200);
-    #define ARDUINOHA_DEBUG_PRINTLN(x) Serial.println(x);
-    #define ARDUINOHA_DEBUG_PRINT(x) Serial.print(x);
+    #define ARDUINOHA_DEBUG_INIT() do { if (!arduinoHAGetLogSink()) { Serial.begin(115200); } } while(0)
+    #define ARDUINOHA_DEBUG_PRINTLN(x) do { \
+        if (arduinoHAGetLogSink()) { arduinoHAGetLogSink()->println(String(x)); } \
+        else { Serial.println(x); } \
+    } while(0)
+    #define ARDUINOHA_DEBUG_PRINT(x) do { \
+        if (arduinoHAGetLogSink()) { arduinoHAGetLogSink()->print(String(x)); } \
+        else { Serial.print(x); } \
+    } while(0)
 #else
     #define ARDUINOHA_DEBUG_INIT()
     #define ARDUINOHA_DEBUG_PRINTLN(x)
