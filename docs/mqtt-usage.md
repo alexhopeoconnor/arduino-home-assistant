@@ -114,7 +114,30 @@ myButton.setPayloadPress("PRESS");
 
 Defined in `ArduinoHADefines.h` or via build flags.
 
-- **`ARDUINOHA_DEBUG`** — enables library logging (useful when debugging MQTT). By default lines go to **`Serial`** unless you install a sink with **`arduinoHASetLogSink(ArduinoHALogSink*)`** (for example **DeviceFramework** forwards debug output into its main log stream).
+- **`ARDUINOHA_DEBUG`** — enables ArduinoHA logging by default and sets the initial maximum verbosity to `Debug`. Without this flag, structured logs are compiled in but remain disabled until you call `arduinoHASetLogEnabled(true)`.
+
+Structured logging is available through:
+
+```cpp
+arduinoHASetLogEnabled(true);
+arduinoHASetLogLevel(ArduinoHALogLevel::Trace);
+
+class MyLogSink : public ArduinoHALogSink {
+public:
+    void log(const ArduinoHALogMessage& msg) override {
+        Serial.print("[");
+        Serial.print(arduinoHALogLevelTag(msg.level));
+        Serial.print("][aha.");
+        Serial.print(msg.subsystem);
+        Serial.print("] ");
+        Serial.println(msg.text);
+    }
+};
+```
+
+`arduinoHALog(...)` and `arduinoHALogf(...)` support subsystem-tagged messages such as `mqtt`, `discovery`, `availability`, `serializer`, `entity`, and `device`. `DeviceFramework` installs a structured sink so ArduinoHA messages follow the same main log stream as the rest of the firmware.
+
+Optional transport context for diagnostics (registered automatically by **DeviceFramework**): **`arduinoHASetNetworkStatusFn`** (for example returning `WiFi.status()` so publish failure lines can include `wifi=`).
 
 **Exclude unused device types** (saves flash from vtables), e.g.:
 

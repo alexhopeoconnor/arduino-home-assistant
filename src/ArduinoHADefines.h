@@ -37,15 +37,17 @@
 #if defined(ARDUINOHA_DEBUG)
     #include <Arduino.h>
 
-    #define ARDUINOHA_DEBUG_INIT() do { if (!arduinoHAGetLogSink()) { Serial.begin(115200); } } while(0)
-    #define ARDUINOHA_DEBUG_PRINTLN(x) do { \
-        if (arduinoHAGetLogSink()) { arduinoHAGetLogSink()->println(String(x)); } \
-        else { Serial.println(x); } \
+    #define ARDUINOHA_DEBUG_INIT() do { \
+        if (!arduinoHAGetLogSink()) { Serial.begin(115200); } \
+        arduinoHASetLogEnabled(true); \
+        arduinoHASetLogLevel(ArduinoHALogLevel::Debug); \
     } while(0)
-    #define ARDUINOHA_DEBUG_PRINT(x) do { \
-        if (arduinoHAGetLogSink()) { arduinoHAGetLogSink()->print(String(x)); } \
-        else { Serial.print(x); } \
-    } while(0)
+    /** @deprecated Prefer arduinoHALog / arduinoHALogf; each macro emits one structured line. */
+    #define ARDUINOHA_DEBUG_PRINTLN(x) \
+        arduinoHALog(ArduinoHALogLevel::Debug, "aha", String(x))
+    /** @deprecated Prefer arduinoHALog / arduinoHALogf; each macro emits one structured line. */
+    #define ARDUINOHA_DEBUG_PRINT(x) \
+        arduinoHALog(ArduinoHALogLevel::Debug, "aha", String(x))
 #else
     #define ARDUINOHA_DEBUG_INIT()
     #define ARDUINOHA_DEBUG_PRINTLN(x)

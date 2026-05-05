@@ -1,6 +1,8 @@
 #ifndef AHA_ARDUINOHA_H
 #define AHA_ARDUINOHA_H
 
+#include "ArduinoHALog.h"
+#include "ArduinoHALogTemplates.h"
 #include "HADevice.h"
 #include "HAMqtt.h"
 #include "device-types/HABinarySensor.h"

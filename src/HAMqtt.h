@@ -37,6 +37,22 @@ using namespace arduino;
 class HAMqtt
 {
 public:
+    /**
+     * Best-effort classification of the last disconnect or transport failure
+     * (for diagnostics; not an MQTT DISCONNECT reason code).
+     */
+    enum class DiagnosticDisconnectReason : uint8_t {
+        None = 0,
+        LoopReturnedFalse,
+        DeferredBeginPublishFailed,
+        DeferredEndPublishFailed,
+        NotConnectedDuringDeferredFlush,
+        UnderlyingPubSubStateChanged,
+        ExplicitDisconnect,
+    };
+
+    static const char* diagnosticDisconnectReasonText(DiagnosticDisconnectReason reason);
+
     enum ConnectionState {
         StateConnecting = -5,
         StateConnectionTimeout = -4,
@@ -193,6 +209,26 @@ public:
      */
     inline ConnectionState getState() const
         { return _currentState; }
+
+    inline uint8_t getDeferredQueueCount() const
+        { return _deferredCount; }
+
+    inline uint32_t getLastLoopOkAt() const
+        { return _lastLoopOkAt; }
+
+    inline uint32_t getLastMessageAt() const
+        { return _lastMessageAt; }
+
+    inline uint32_t getLastPublishAt() const
+        { return _lastPublishAt; }
+
+    inline uint32_t getLastDisconnectAt() const
+        { return _lastDisconnectAt; }
+
+    inline DiagnosticDisconnectReason getLastDisconnectReason() const
+        { return _lastDisconnectReason; }
+
+    int getPubSubState() const;
 
     /**
      * Sets parameters of the MQTT connection using the IP address and port.
@@ -526,6 +562,11 @@ private:
      */
     bool flushDeferredPublishes();
 
+    /**
+     * PubSubClient snapshot when a direct publish step fails (header or endPublish).
+     */
+    String formatDirectPublishFailureDiagnostics(bool hamqttConnectedBefore, int pubsubStateBefore) const;
+
 #ifdef ARDUINOHA_TEST
     PubSubClientMock* _mqtt;
 #else
@@ -597,6 +638,12 @@ private:
 
     /// The last known state of the MQTT connection.
     ConnectionState _currentState;
+
+    uint32_t _lastLoopOkAt;
+    uint32_t _lastMessageAt;
+    uint32_t _lastPublishAt;
+    uint32_t _lastDisconnectAt;
+    DiagnosticDisconnectReason _lastDisconnectReason;
 
     /// Nesting depth for inbound message dispatch (processMessage).
     uint8_t _messageDispatchDepth;
