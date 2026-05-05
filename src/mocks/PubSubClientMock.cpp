@@ -13,6 +13,8 @@ PubSubClientMock::PubSubClientMock() :
     _flushedMessagesNb(0),
     _subscriptions(nullptr),
     _subscriptionsNb(0),
+    _insideCallback(false),
+    _publishCallsFromCallbackNb(0),
     callback(nullptr)
 {
 
@@ -116,6 +118,11 @@ bool PubSubClientMock::beginPublish(
 )
 {
     if (!connected()) {
+        return false;
+    }
+
+    if (_insideCallback) {
+        _publishCallsFromCallbackNb++;
         return false;
     }
 
@@ -239,7 +246,9 @@ void PubSubClientMock::fakeMessage(const char* topic, const char* message)
     uint8_t data[len];
     memcpy(data, message, len);
 
+    _insideCallback = true;
     callback(const_cast<char*>(topic), data, len);
+    _insideCallback = false;
 }
 
 void PubSubClientMock::fakeMessage(

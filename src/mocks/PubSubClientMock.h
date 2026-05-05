@@ -166,6 +166,15 @@ public:
     inline const MqttWill& getLastWill() const
         { return _lastWill; }
 
+    inline bool isInsideCallback() const
+        { return _insideCallback; }
+
+    inline uint16_t getPublishCallsFromCallbackNb() const
+        { return _publishCallsFromCallbackNb; }
+
+    inline void resetPublishCallsFromCallbackNb()
+        { _publishCallsFromCallbackNb = 0; }
+
     void clearFlushedMessages();
     void clearSubscriptions();
     void fakeMessage(const char* topic, const char* message);
@@ -184,6 +193,8 @@ private:
     uint8_t _subscriptionsNb;
     MqttConnection _connection;
     MqttWill _lastWill;
+    bool _insideCallback;
+    uint16_t _publishCallsFromCallbackNb;
     MQTT_CALLBACK_SIGNATURE;
 };
 

@@ -42,6 +42,11 @@ void onCommandReceived(HANumeric number, HANumber* caller)
     lastCommandCallbackCall.caller = caller;
 }
 
+void onCommandPublishAttempt(HANumeric value, HANumber* caller)
+{
+    TEST_ASSERT_FALSE(caller->setState(value));
+}
+
 void test_NumberTest_invalid_unique_id(void) {
     prepareTest
 
@@ -1008,6 +1013,19 @@ void test_NumberTest_command_number_float_p3(void) {
     mock->fakeMessage(AHATOFSTR(CommandTopic), F("-1234"));
 
     assertCommandCallbackCalled(HANumeric(-1.234f, 3), &number)
+}
+
+void test_NumberTest_callback_publish_attempt_is_rejected(void) {
+    prepareTest
+
+    mock->connectDummy();
+    HANumber number(testUniqueId);
+    number.onCommand(onCommandPublishAttempt);
+
+    mock->fakeMessage(AHATOFSTR(CommandTopic), F("1234"));
+
+    TEST_ASSERT_EQUAL(1, mock->getPublishCallsFromCallbackNb());
+    TEST_ASSERT_EQUAL(0, mock->getFlushedMessagesNb());
 }
 
 void test_NumberTest_command_number_invalid(void) {

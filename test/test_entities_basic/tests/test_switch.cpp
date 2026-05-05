@@ -42,6 +42,11 @@ void onCommandReceived(bool state, HASwitch* caller)
     lastCommandCallbackCall.caller = caller;
 }
 
+void onCommandPublishAttempt(bool state, HASwitch* caller)
+{
+    TEST_ASSERT_FALSE(caller->setState(state));
+}
+
 void test_SwitchTest_invalid_unique_id(void) {
     prepareTest
 
@@ -386,6 +391,19 @@ void test_SwitchTest_command_off(void) {
     mock->fakeMessage(AHATOFSTR(CommandTopic), F("OFF"));
 
     assertCommandCallbackCalled(false, &testSwitch)
+}
+
+void test_SwitchTest_callback_publish_attempt_is_rejected(void) {
+    prepareTest
+
+    mock->connectDummy();
+    HASwitch testSwitch(testUniqueId);
+    testSwitch.onCommand(onCommandPublishAttempt);
+
+    mock->fakeMessage(AHATOFSTR(CommandTopic), F("ON"));
+
+    TEST_ASSERT_EQUAL(1, mock->getPublishCallsFromCallbackNb());
+    TEST_ASSERT_EQUAL(0, mock->getFlushedMessagesNb());
 }
 
 void test_SwitchTest_different_switch_command(void) {

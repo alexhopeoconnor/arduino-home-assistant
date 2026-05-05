@@ -41,6 +41,11 @@ void onCommandReceived(int8_t index, HASelect* caller)
     lastCommandCallbackCall.caller = caller;
 }
 
+void onCommandPublishAttempt(int8_t index, HASelect* caller)
+{
+    TEST_ASSERT_FALSE(caller->setState(index));
+}
+
 void test_SelectTest_invalid_unique_id(void) {
     prepareTest
 
@@ -475,6 +480,20 @@ void test_SelectTest_command_option_non_existing(void) {
     mock->fakeMessage(AHATOFSTR(CommandTopic), F("DoesNotExist"));
 
     assertCommandCallbackNotCalled()
+}
+
+void test_SelectTest_callback_publish_attempt_is_rejected(void) {
+    prepareTest
+
+    mock->connectDummy();
+    HASelect select(testUniqueId);
+    select.setOptions("Option A;B;C");
+    select.onCommand(onCommandPublishAttempt);
+
+    mock->fakeMessage(AHATOFSTR(CommandTopic), F("B"));
+
+    TEST_ASSERT_EQUAL(1, mock->getPublishCallsFromCallbackNb());
+    TEST_ASSERT_EQUAL(0, mock->getFlushedMessagesNb());
 }
 
 void test_SelectTest_different_select_command(void) {

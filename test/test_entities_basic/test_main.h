@@ -113,6 +113,7 @@ extern void test_SwitchTest_publish_nothing_if_retained(void);
 extern void test_SwitchTest_publish_state_off(void);
 extern void test_SwitchTest_publish_state_on(void);
 extern void test_SwitchTest_retain_setter(void);
+extern void test_SwitchTest_callback_publish_attempt_is_rejected(void);
 extern void test_TextTest_availability(void);
 extern void test_TextTest_command_callback(void);
 extern void test_TextTest_command_subscription(void);
@@ -131,5 +132,6 @@ extern void test_TextTest_publish_nothing_if_retained(void);
 extern void test_TextTest_publish_state(void);
 extern void test_TextTest_publish_state_debounce(void);
 extern void test_TextTest_retain_setter(void);
+extern void test_TextTest_callback_publish_attempt_is_rejected(void);
 
 #endif

@@ -7,6 +7,7 @@ static TestCase tests[] = {
     TEST_ENTRY(test_MqttTest_reconnect_interval_default_value),
     TEST_ENTRY(test_MqttTest_reconnect_interval_setter),
     TEST_ENTRY(test_MqttTest_reconnect_interval_throttles_attempts),
+    TEST_ENTRY(test_MqttTest_publish_attempt_from_message_callback_is_rejected),
 
     TEST_ENTRY(test_DeviceTest_default_unique_id),
     TEST_ENTRY(test_DeviceTest_unique_id_constructor_char),

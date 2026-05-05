@@ -46,6 +46,11 @@ void onCommandReceived(const char* value, HAText* caller)
     lastCommandCallbackCall.caller = caller;
 }
 
+void onCommandPublishAttempt(const char* value, HAText* caller)
+{
+    TEST_ASSERT_FALSE(caller->setState(value));
+}
+
 void test_TextTest_invalid_unique_id(void) {
     prepareTest
 
@@ -321,6 +326,19 @@ void test_TextTest_command_callback(void) {
     mock->fakeMessage(AHATOFSTR(CommandTopic), F("hello"));
 
     assertCommandCallbackCalled("hello", &text)
+}
+
+void test_TextTest_callback_publish_attempt_is_rejected(void) {
+    prepareTest
+
+    mock->connectDummy();
+    HAText text(testUniqueId);
+    text.onCommand(onCommandPublishAttempt);
+
+    mock->fakeMessage(AHATOFSTR(CommandTopic), F("hello"));
+
+    TEST_ASSERT_EQUAL(1, mock->getPublishCallsFromCallbackNb());
+    TEST_ASSERT_EQUAL(0, mock->getFlushedMessagesNb());
 }
 
 void test_TextTest_different_text_command(void) {

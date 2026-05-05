@@ -23,6 +23,7 @@ extern void test_NumberTest_command_number_signed(void);
 extern void test_NumberTest_command_number_unsigned(void);
 extern void test_NumberTest_command_number_zero(void);
 extern void test_NumberTest_command_subscription(void);
+extern void test_NumberTest_callback_publish_attempt_is_rejected(void);
 extern void test_NumberTest_current_state_setter_getter_float(void);
 extern void test_NumberTest_current_state_setter_getter_int16(void);
 extern void test_NumberTest_current_state_setter_getter_int32(void);
@@ -236,5 +237,6 @@ extern void test_SelectTest_publish_state_none(void);
 extern void test_SelectTest_publish_state_only(void);
 extern void test_SelectTest_retain_setter(void);
 extern void test_SelectTest_single_option(void);
+extern void test_SelectTest_callback_publish_attempt_is_rejected(void);
 
 #endif

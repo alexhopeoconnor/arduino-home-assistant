@@ -85,6 +85,7 @@ static TestCase tests[] = {
     TEST_ENTRY(test_SwitchTest_command_off),
     TEST_ENTRY(test_SwitchTest_command_on),
     TEST_ENTRY(test_SwitchTest_command_subscription),
+    TEST_ENTRY(test_SwitchTest_callback_publish_attempt_is_rejected),
     TEST_ENTRY(test_SwitchTest_current_state_setter),
     TEST_ENTRY(test_SwitchTest_default_entity_id_setter),
     TEST_ENTRY(test_SwitchTest_default_params),
@@ -120,6 +121,7 @@ static TestCase tests[] = {
     TEST_ENTRY(test_TextTest_publish_nothing_if_retained),
     TEST_ENTRY(test_TextTest_publish_state),
     TEST_ENTRY(test_TextTest_publish_state_debounce),
+    TEST_ENTRY(test_TextTest_callback_publish_attempt_is_rejected),
     TEST_ENTRY(test_TextTest_retain_setter),
 };
 
