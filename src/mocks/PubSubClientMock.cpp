@@ -14,7 +14,8 @@ PubSubClientMock::PubSubClientMock() :
     _subscriptions(nullptr),
     _subscriptionsNb(0),
     _insideCallback(false),
-    _publishCallsFromCallbackNb(0),
+    _failNextBeginPublish(false),
+    _failNextEndPublish(false),
     callback(nullptr)
 {
 
@@ -121,8 +122,8 @@ bool PubSubClientMock::beginPublish(
         return false;
     }
 
-    if (_insideCallback) {
-        _publishCallsFromCallbackNb++;
+    if (_failNextBeginPublish) {
+        _failNextBeginPublish = false;
         return false;
     }
 
@@ -175,6 +176,11 @@ size_t PubSubClientMock::print(const __FlashStringHelper* buffer)
 int PubSubClientMock::endPublish()
 {
     if (!_pendingMessage) {
+        return 0;
+    }
+
+    if (_failNextEndPublish) {
+        _failNextEndPublish = false;
         return 0;
     }
 

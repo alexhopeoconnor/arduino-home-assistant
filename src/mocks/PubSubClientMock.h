@@ -169,11 +169,11 @@ public:
     inline bool isInsideCallback() const
         { return _insideCallback; }
 
-    inline uint16_t getPublishCallsFromCallbackNb() const
-        { return _publishCallsFromCallbackNb; }
+    inline void failNextBeginPublish()
+        { _failNextBeginPublish = true; }
 
-    inline void resetPublishCallsFromCallbackNb()
-        { _publishCallsFromCallbackNb = 0; }
+    inline void failNextEndPublish()
+        { _failNextEndPublish = true; }
 
     void clearFlushedMessages();
     void clearSubscriptions();
@@ -194,7 +194,8 @@ private:
     MqttConnection _connection;
     MqttWill _lastWill;
     bool _insideCallback;
-    uint16_t _publishCallsFromCallbackNb;
+    bool _failNextBeginPublish;
+    bool _failNextEndPublish;
     MQTT_CALLBACK_SIGNATURE;
 };
 

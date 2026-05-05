@@ -13,7 +13,7 @@ static TestCase tests[] = {
     TEST_ENTRY(test_NumberTest_command_number_unsigned),
     TEST_ENTRY(test_NumberTest_command_number_zero),
     TEST_ENTRY(test_NumberTest_command_subscription),
-    TEST_ENTRY(test_NumberTest_callback_publish_attempt_is_rejected),
+    TEST_ENTRY(test_NumberTest_callback_publish_is_deferred_until_after_dispatch),
     TEST_ENTRY(test_NumberTest_current_state_setter_getter_float),
     TEST_ENTRY(test_NumberTest_current_state_setter_getter_int16),
     TEST_ENTRY(test_NumberTest_current_state_setter_getter_int32),
@@ -227,7 +227,7 @@ static TestCase tests[] = {
     TEST_ENTRY(test_SelectTest_publish_state_only),
     TEST_ENTRY(test_SelectTest_retain_setter),
     TEST_ENTRY(test_SelectTest_single_option),
-    TEST_ENTRY(test_SelectTest_callback_publish_attempt_is_rejected),
+    TEST_ENTRY(test_SelectTest_callback_publish_is_deferred_until_after_dispatch),
 };
 
 static const size_t TEST_COUNT = sizeof(tests) / sizeof(tests[0]);

@@ -105,6 +105,9 @@ public:
     inline void setOptimistic(const bool optimistic)
         { _optimistic = optimistic; }
 
+    void setValueTemplate(const char* valueTemplate);
+    void setCommandTemplate(const char* commandTemplate);
+
     /**
      * Registers callback that will be called each time the option is changed from the HA panel.
      * Please note that it's not possible to register multiple callbacks for the same select.
@@ -179,6 +182,9 @@ private:
 
     /// The optimistic mode of the select (`true` - enabled, `false` - disabled).
     bool _optimistic;
+
+    const char* _valueTemplate;
+    const char* _commandTemplate;
 
     /// The command callback that will be called when option is changed via the HA panel.
     HASELECT_CALLBACK(_commandCallback);

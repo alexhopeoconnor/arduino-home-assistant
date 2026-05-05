@@ -281,3 +281,13 @@ void test_BinarySensorTest_publish_state_debounce_skip(void) {
     TEST_ASSERT_TRUE(result);
 }
 
+void test_BinarySensorTest_disconnected_state_updates_local_shadow(void) {
+    initMqttTest(testDeviceId)
+
+    HABinarySensor sensor(testUniqueId);
+
+    TEST_ASSERT_FALSE(sensor.setState(true));
+    TEST_ASSERT_TRUE(sensor.getCurrentState());
+    TEST_ASSERT_EQUAL(0, mock->getFlushedMessagesNb());
+}
+

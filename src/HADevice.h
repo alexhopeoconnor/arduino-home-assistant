@@ -131,6 +131,35 @@ public:
      */
     void setConfigurationUrl(const char* url);
 
+    void setModelId(const char* modelId);
+    void setHardwareVersion(const char* hardwareVersion);
+    void setSerialNumber(const char* serialNumber);
+    void setSuggestedArea(const char* suggestedArea);
+    void setViaDevice(const char* viaDevice);
+
+    /**
+     * Adds one MQTT device connection entry (e.g. `("mac", "aa:bb:cc:dd:ee:ff")`).
+     * Connections are serialized as JSON arrays inside the discovery `dev` object.
+     *
+     * @returns Returns `false` when the internal JSON buffer would overflow.
+     */
+    bool addConnection(const char* type, const char* value);
+
+    /**
+     * Sets the `connections` array as raw JSON (e.g. [[\"mac\",\"aa:bb:cc:dd:ee:ff\"]]).
+     * The payload is copied into an internal buffer.
+     */
+    void setConnectionsJson(const char* connectionsJson);
+
+    void setPayloadAvailable(const char* payload);
+    void setPayloadNotAvailable(const char* payload);
+
+    inline const char* getPayloadAvailable() const
+        { return _payloadAvailable; }
+
+    inline const char* getPayloadNotAvailable() const
+        { return _payloadNotAvailable; }
+
     /**
      * Sets device's availability and publishes MQTT message on the availability topic.
      * If the device is not connected to an MQTT broker or the shared availability is not enabled then nothing happens.
@@ -178,6 +207,13 @@ private:
 
     /// Specifies whether extended unique IDs feature is enabled.
     bool _extendedUniqueIds;
+
+    const char* _payloadAvailable;
+    const char* _payloadNotAvailable;
+    static const uint16_t MaxConnectionsJsonLength = 192;
+    char _connectionsJson[MaxConnectionsJsonLength];
+    bool _hasConnections;
+    bool _connectionsPropertyRegistered;
 };
 
 #endif

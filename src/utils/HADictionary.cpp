@@ -83,7 +83,32 @@ const char HASwingModesProperty[] PROGMEM = {"swing_modes"};
 const char HAModesProperty[] PROGMEM = {"modes"};
 const char HATemperatureCommandTemplateProperty[] PROGMEM = {"temp_cmd_tpl"};
 const char HAPayloadOnProperty[] PROGMEM = {"pl_on"};
+const char HAPayloadOffProperty[] PROGMEM = {"pl_off"};
+const char HAPayloadAvailableProperty[] PROGMEM = {"pl_avail"};
+const char HAPayloadNotAvailableProperty[] PROGMEM = {"pl_not_avail"};
+const char HAAvailabilityListProperty[] PROGMEM = {"avty"};
+const char HAAvailabilityModeProperty[] PROGMEM = {"avty_mode"};
 const char HAExpireAfterProperty[] PROGMEM = {"exp_aft"};
+const char HAOffDelayProperty[] PROGMEM = {"off_dly"};
+const char HAEnabledByDefaultProperty[] PROGMEM = {"en"};
+const char HAEntityPictureProperty[] PROGMEM = {"ent_pic"};
+const char HAQosProperty[] PROGMEM = {"qos"};
+const char HAStateOnDiscoveryProperty[] PROGMEM = {"stat_on"};
+const char HAStateOffDiscoveryProperty[] PROGMEM = {"stat_off"};
+const char HASuggestedDisplayPrecisionProperty[] PROGMEM = {"sug_dsp_prc"};
+const char HAJsonAttributesTemplateProperty[] PROGMEM = {"json_attr_tpl"};
+const char HASensorOptionsProperty[] PROGMEM = {"ops"};
+const char HALastResetValueTemplateProperty[] PROGMEM = {"lrst_val_tpl"};
+const char HAPayloadResetProperty[] PROGMEM = {"pl_rst"};
+const char HAPayloadPressProperty[] PROGMEM = {"pl_prs"};
+
+const char HADeviceModelIdProperty[] PROGMEM = {"mdl_id"};
+const char HADeviceHwVersionProperty[] PROGMEM = {"hw"};
+const char HADeviceSerialNumberProperty[] PROGMEM = {"sn"};
+const char HADeviceSuggestedAreaProperty[] PROGMEM = {"sa"};
+const char HADeviceViaDeviceProperty[] PROGMEM = {"via_device"};
+const char HADeviceConnectionsProperty[] PROGMEM = {"cns"};
+const char HAOriginSupportUrlProperty[] PROGMEM = {"url"};
 
 // topics
 const char HAConfigTopic[] PROGMEM = {"config"};

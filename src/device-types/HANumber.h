@@ -190,6 +190,10 @@ public:
      */
     void updateMinMaxStep(const float min, const float max, const float step);
 
+    void setValueTemplate(const char* valueTemplate);
+    void setCommandTemplate(const char* commandTemplate);
+    void setPayloadReset(const char* payloadReset);
+
     /**
      * Registers callback that will be called each time the number is changed in the HA panel.
      * Please note that it's not possible to register multiple callbacks for the same number.
@@ -254,9 +258,9 @@ private:
     const __FlashStringHelper* getModeProperty() const;
 
     /**
-     * Returns progmem string representing value template for the command.
+     * Built-in command template used for float precision (when no custom template is set).
      */
-    const __FlashStringHelper* getCommandTemplate();
+    const __FlashStringHelper* getBuiltInCommandTemplate() const;
 
     /// The precision of the number. By default it's `HANumber::PrecisionP0`.
     const NumberPrecision _precision;
@@ -293,6 +297,10 @@ private:
 
     /// The callback that will be called when the command is received from the HA.
     HANUMBER_CALLBACK(_commandCallback);
+
+    const char* _commandTemplate;
+    const char* _valueTemplate;
+    const char* _payloadReset;
 
 #if defined(ARDUINOHA_ENABLE_STDFUNCTION)
     /// The std::function callback that will be called when the command is received from the HA.

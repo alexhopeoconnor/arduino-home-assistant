@@ -137,6 +137,15 @@ public:
     bool publishDeviceDiscovery();
 
     /**
+     * Sets optional `support_url` in the discovery `origin` object (must remain valid).
+     */
+    inline void setOriginSupportUrl(const char* url)
+        { _originSupportUrl = url; }
+
+    inline const char* getOriginSupportUrl() const
+        { return _originSupportUrl; }
+
+    /**
      * Returns instance of the device assigned to the HAMqtt class.
      * It's the same object (pointer) that was passed to the HAMqtt constructor.
      */
@@ -310,6 +319,10 @@ public:
      * Message won't be published if the connection with the MQTT broker is not established.
      * In this case method returns false.
      *
+     * While handling an inbound MQTT message (see isProcessingMessage()), a successful
+     * return means the message was queued for send after dispatch completes, not that it
+     * was already transmitted. Outside that context, behavior is unchanged.
+     *
      * @param topic The topic to publish.
      * @param payload The payload to publish (it may be empty const char).
      * @param retained Specifies whether message should be retained.
@@ -402,12 +415,47 @@ public:
      */
     void processMessage(const char* topic, const uint8_t* payload, uint16_t length);
 
+    /**
+     * True while handling an inbound MQTT message (user onMessage and device onMqttMessage).
+     * Publish attempts in this window are queued and flushed when dispatch completes.
+     */
+    inline bool isProcessingMessage() const
+        { return _messageDispatchDepth > 0; }
+
 #ifdef ARDUINOHA_TEST
     inline uint8_t getDevicesTypesNb() const
         { return _devicesTypesNb; }
 
     inline HABaseDeviceType** getDevicesTypes() const
         { return _devicesTypes; }
+
+    inline uint16_t getDeferredPublishEnqueueCountForTest() const
+        { return _deferredPublishEnqueueCountForTest; }
+
+    inline void resetDeferredPublishTestCounters()
+    {
+        _deferredPublishEnqueueCountForTest = 0;
+        _deferredFlushFailedForTest = false;
+        _lastDeferredFlushErrorForTest = 0;
+    }
+
+    inline uint8_t getPendingDeferredPublishesForTest() const
+        { return _deferredCount; }
+
+    inline bool hasDeferredFlushFailureForTest() const
+        { return _deferredFlushFailedForTest; }
+
+    inline uint8_t getLastDeferredFlushErrorForTest() const
+        { return _lastDeferredFlushErrorForTest; }
+
+    inline bool didDeferredFlushFailDueToDisconnectForTest() const
+        { return _lastDeferredFlushErrorForTest == 1; }
+
+    inline bool didDeferredFlushFailAtBeginPublishForTest() const
+        { return _lastDeferredFlushErrorForTest == 2; }
+
+    inline bool didDeferredFlushFailAtEndPublishForTest() const
+        { return _lastDeferredFlushErrorForTest == 3; }
 #endif
 
 private:
@@ -432,6 +480,51 @@ private:
      * Sets the state of the MQTT connection.
      */
     void setState(ConnectionState state);
+
+    struct DeferredPublishMessage {
+        char* topic;
+        uint8_t* payload;
+        uint16_t length;
+        bool retained;
+    };
+
+    struct DeferredPublishBuilder {
+        bool active;
+        bool valid;
+        char* topic;
+        uint8_t* payload;
+        uint16_t expectedLength;
+        uint16_t writtenLength;
+        bool retained;
+    };
+
+    enum DeferredFlushError {
+        DeferredFlushErrorNone = 0,
+        DeferredFlushErrorNotConnected,
+        DeferredFlushErrorBeginPublish,
+        DeferredFlushErrorEndPublish
+    };
+
+    static const uint8_t DeferredQueueCapacity = 8;
+
+    bool enqueueDeferredPublish(
+        const char* topic,
+        const uint8_t* payload,
+        uint16_t length,
+        bool retained
+    );
+
+    void clearDeferredMessage(DeferredPublishMessage& msg);
+
+    void clearDeferredQueue();
+
+    void clearDeferredBuilder();
+
+    /**
+     * Sends queued publishes in order. On transport failure, stops and leaves the
+     * remaining queue intact for a later retry (e.g. from loop()).
+     */
+    bool flushDeferredPublishes();
 
 #ifdef ARDUINOHA_TEST
     PubSubClientMock* _mqtt;
@@ -470,6 +563,8 @@ private:
     /// Enables MQTT device discovery mode when set to true.
     bool _deviceDiscoveryEnabled;
 
+    const char* _originSupportUrl;
+
     /// The username used for the authentication. It's set in the HAMqtt::begin method.
     const char* _username;
 
@@ -502,6 +597,21 @@ private:
 
     /// The last known state of the MQTT connection.
     ConnectionState _currentState;
+
+    /// Nesting depth for inbound message dispatch (processMessage).
+    uint8_t _messageDispatchDepth;
+
+    DeferredPublishMessage _deferredQueue[DeferredQueueCapacity];
+    uint8_t _deferredHead;
+    uint8_t _deferredCount;
+
+    DeferredPublishBuilder _deferredBuilder;
+
+#ifdef ARDUINOHA_TEST
+    uint16_t _deferredPublishEnqueueCountForTest = 0;
+    bool _deferredFlushFailedForTest = false;
+    uint8_t _lastDeferredFlushErrorForTest = 0;
+#endif
 };
 
 #endif

@@ -27,10 +27,11 @@ void HACamera::buildSerializer()
         return;
     }
 
-    _serializer = new HASerializer(this, 9); // 9 - max properties nb
+    _serializer = new HASerializer(this, 18);
     _serializer->set(AHATOFSTR(HANameProperty), _name);
     setEntityIdProperty(_serializer);
     _serializer->set(HASerializer::WithUniqueId);
+    applyCommonEntityProperties(_serializer, false);
     _serializer->set(AHATOFSTR(HAStateEntityCategory), nonEmptyString(_entityCategory));
     _serializer->set(AHATOFSTR(HAIconProperty), _icon);
     _serializer->set(
@@ -49,7 +50,7 @@ HASerializer* HACamera::buildDeviceDiscoverySerializer()
         return nullptr;
     }
 
-    HASerializer* serializer = new HASerializer(this, 9);
+    HASerializer* serializer = new HASerializer(this, 18);
     serializer->set(
         AHATOFSTR(HAPlatformProperty),
         AHATOFSTR(HAComponentCamera),
@@ -58,6 +59,7 @@ HASerializer* HACamera::buildDeviceDiscoverySerializer()
     serializer->set(AHATOFSTR(HANameProperty), _name);
     setEntityIdProperty(serializer);
     serializer->set(HASerializer::WithUniqueId);
+    applyCommonEntityProperties(serializer, false);
     serializer->set(AHATOFSTR(HAStateEntityCategory), nonEmptyString(_entityCategory));
     serializer->set(AHATOFSTR(HAIconProperty), _icon);
     serializer->set(

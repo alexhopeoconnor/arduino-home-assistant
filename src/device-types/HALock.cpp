@@ -24,12 +24,13 @@ bool HALock::setState(const LockState state, const bool force)
         return true;
     }
 
-    if (publishState(state)) {
-        _currentState = state;
-        return true;
+    if (state == StateUnknown) {
+        return false;
     }
 
-    return false;
+    const bool published = publishState(state);
+    _currentState = state;
+    return published;
 }
 
 void HALock::buildSerializer()
@@ -38,10 +39,11 @@ void HALock::buildSerializer()
         return;
     }
 
-    _serializer = new HASerializer(this, 11); // 11 - max properties nb
+    _serializer = new HASerializer(this, 20);
     _serializer->set(AHATOFSTR(HANameProperty), _name);
     setEntityIdProperty(_serializer);
     _serializer->set(HASerializer::WithUniqueId);
+    applyCommonEntityProperties(_serializer);
     _serializer->set(AHATOFSTR(HAStateEntityCategory), nonEmptyString(_entityCategory));
     _serializer->set(AHATOFSTR(HAIconProperty), _icon);
 
@@ -73,7 +75,7 @@ HASerializer* HALock::buildDeviceDiscoverySerializer()
         return nullptr;
     }
 
-    HASerializer* serializer = new HASerializer(this, 11);
+    HASerializer* serializer = new HASerializer(this, 20);
     serializer->set(
         AHATOFSTR(HAPlatformProperty),
         AHATOFSTR(HAComponentLock),
@@ -82,6 +84,7 @@ HASerializer* HALock::buildDeviceDiscoverySerializer()
     serializer->set(AHATOFSTR(HANameProperty), _name);
     setEntityIdProperty(serializer);
     serializer->set(HASerializer::WithUniqueId);
+    applyCommonEntityProperties(serializer);
     serializer->set(AHATOFSTR(HAStateEntityCategory), nonEmptyString(_entityCategory));
     serializer->set(AHATOFSTR(HAIconProperty), _icon);
 

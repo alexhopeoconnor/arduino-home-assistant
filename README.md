@@ -24,6 +24,7 @@ lib_deps =
 
 * Two-way communication (state reporting and command execution)
 * MQTT discovery (device is added to the Home Assistant panel automatically)
+* Rich discovery metadata for entities, devices, origin, templates and availability
 * MQTT Last Will and Testament
 * Support for custom MQTT messages (publishing and subscribing)
 * Auto reconnect with MQTT broker
@@ -47,6 +48,12 @@ If you need to manage discovery at runtime:
 * Use `HABaseDeviceType::removeFromDiscovery()` to clear the retained discovery payload for a single entity.
 
 When device discovery mode is enabled, runtime discovery refreshes automatically clear any stale retained per-entity config before republishing the device discovery payload.
+
+Recent discovery additions include:
+
+* Shared entity metadata such as `enabled_by_default`, `entity_picture`, `qos`, `encoding`
+* Device/origin metadata such as `model_id`, `hw_version`, `serial_number`, `suggested_area`, `via_device`, `connections`, `support_url`
+* Availability payload overrides and multi-topic availability discovery metadata
 
 ## Supported HA types
 

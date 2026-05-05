@@ -30,6 +30,8 @@ void setup() {
     analogSensor.setIcon("mdi:home");
     analogSensor.setName("Analog voltage");
     analogSensor.setUnitOfMeasurement("V");
+    analogSensor.setSuggestedDisplayPrecision(2);
+    // analogSensor.setValueTemplate("{{ value_json.voltage }}");
 
     mqtt.begin(BROKER_ADDR);
 }

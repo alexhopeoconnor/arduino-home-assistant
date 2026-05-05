@@ -31,12 +31,9 @@ bool HAFan::setState(const bool state, const bool force)
         return true;
     }
 
-    if (publishState(state)) {
-        _currentState = state;
-        return true;
-    }
-
-    return false;
+    const bool published = publishState(state);
+    _currentState = state;
+    return published;
 }
 
 bool HAFan::setSpeed(const uint16_t speed, const bool force)
@@ -45,12 +42,13 @@ bool HAFan::setSpeed(const uint16_t speed, const bool force)
         return true;
     }
 
-    if (publishSpeed(speed)) {
-        _currentSpeed = speed;
-        return true;
+    if (!(_features & SpeedsFeature)) {
+        return false;
     }
 
-    return false;
+    const bool published = publishSpeed(speed);
+    _currentSpeed = speed;
+    return published;
 }
 
 void HAFan::buildSerializer()
@@ -59,10 +57,11 @@ void HAFan::buildSerializer()
         return;
     }
 
-    _serializer = new HASerializer(this, 15); // 15 - max properties nb
+    _serializer = new HASerializer(this, 24);
     _serializer->set(AHATOFSTR(HANameProperty), _name);
     setEntityIdProperty(_serializer);
     _serializer->set(HASerializer::WithUniqueId);
+    applyCommonEntityProperties(_serializer);
     _serializer->set(AHATOFSTR(HAStateEntityCategory), nonEmptyString(_entityCategory));
     _serializer->set(AHATOFSTR(HAIconProperty), _icon);
 
@@ -115,7 +114,7 @@ HASerializer* HAFan::buildDeviceDiscoverySerializer()
         return nullptr;
     }
 
-    HASerializer* serializer = new HASerializer(this, 15);
+    HASerializer* serializer = new HASerializer(this, 24);
     serializer->set(
         AHATOFSTR(HAPlatformProperty),
         AHATOFSTR(HAComponentFan),
@@ -124,6 +123,7 @@ HASerializer* HAFan::buildDeviceDiscoverySerializer()
     serializer->set(AHATOFSTR(HANameProperty), _name);
     setEntityIdProperty(serializer);
     serializer->set(HASerializer::WithUniqueId);
+    applyCommonEntityProperties(serializer);
     serializer->set(AHATOFSTR(HAStateEntityCategory), nonEmptyString(_entityCategory));
     serializer->set(AHATOFSTR(HAIconProperty), _icon);
 

@@ -46,9 +46,9 @@ void onCommandReceived(const char* value, HAText* caller)
     lastCommandCallbackCall.caller = caller;
 }
 
-void onCommandPublishAttempt(const char* value, HAText* caller)
+void onCommandDeferredPublish(const char* value, HAText* caller)
 {
-    TEST_ASSERT_FALSE(caller->setState(value));
+    TEST_ASSERT_TRUE(caller->setState(value));
 }
 
 void test_TextTest_invalid_unique_id(void) {
@@ -328,17 +328,19 @@ void test_TextTest_command_callback(void) {
     assertCommandCallbackCalled("hello", &text)
 }
 
-void test_TextTest_callback_publish_attempt_is_rejected(void) {
+void test_TextTest_callback_publish_is_deferred_until_after_dispatch(void) {
     prepareTest
 
     mock->connectDummy();
+    mqtt.resetDeferredPublishTestCounters();
     HAText text(testUniqueId);
-    text.onCommand(onCommandPublishAttempt);
+    text.onCommand(onCommandDeferredPublish);
 
     mock->fakeMessage(AHATOFSTR(CommandTopic), F("hello"));
 
-    TEST_ASSERT_EQUAL(1, mock->getPublishCallsFromCallbackNb());
-    TEST_ASSERT_EQUAL(0, mock->getFlushedMessagesNb());
+    TEST_ASSERT_EQUAL_UINT16(1, mqtt.getDeferredPublishEnqueueCountForTest());
+    TEST_ASSERT_EQUAL_UINT8(1, mock->getFlushedMessagesNb());
+    AHA_ASSERT_MQTT_MESSAGE(mock, 0, AHATOFSTR(StateTopic), "hello", true);
 }
 
 void test_TextTest_different_text_command(void) {

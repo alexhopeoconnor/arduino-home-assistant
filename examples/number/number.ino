@@ -52,6 +52,9 @@ void setup() {
     // number.setStep(0.5f); // minimum step: 0.001f
     // number.setMode(HANumber::ModeBox);
     // number.setMode(HANumber::ModeSlider);
+    // number.setValueTemplate("{{ value_json.level }}");
+    // number.setPayloadReset("RESET");
+    // number.setCommandTemplate("{{ value | float | round(1) }}");
 
     // You can set retain flag for the HA commands
     // number.setRetain(true);

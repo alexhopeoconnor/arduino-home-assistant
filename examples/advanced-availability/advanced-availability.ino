@@ -29,10 +29,19 @@ void setup() {
     // set device's details (optional)
     device.setName("Arduino");
     device.setSoftwareVersion("1.0.0");
+    mqtt.setOriginSupportUrl("https://example.com/device-help");
 
     sensor.setCurrentState(lastInputState); // optional
     sensor.setName("Door sensor"); // optional
     sensor.setDeviceClass("door"); // optional
+    sensor.setPayloadAvailable("ready");
+    sensor.setPayloadNotAvailable("lost");
+
+    // Optional multi-topic discovery metadata for external health sources.
+    // Runtime availability publishing still uses sensor.setAvailability(...).
+    // sensor.setAvailabilityMode("all");
+    // sensor.addAvailabilityEntry("bridge/status");
+    // sensor.addAvailabilityEntry("sensor/health", "{{ value_json.state }}");
 
     // This method enables availability for all device types registered on the device.
     // For example, if you have 5 sensors on the same device, you can enable

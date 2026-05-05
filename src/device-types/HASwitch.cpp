@@ -2,7 +2,25 @@
 #ifndef EX_ARDUINOHA_SWITCH
 
 #include "../HAMqtt.h"
+#include "../utils/HADictionary.h"
 #include "../utils/HASerializer.h"
+#include <string.h>
+
+static bool payloadEquals(
+    const uint8_t* data,
+    const uint16_t length,
+    const char* ram,
+    const __FlashStringHelper* flash
+)
+{
+    if (ram) {
+        const size_t n = strlen(ram);
+        return (length == n) && (memcmp(data, ram, length) == 0);
+    }
+
+    const size_t n = strlen_P(AHAFROMFSTR(flash));
+    return (length == n) && (memcmp_P(data, AHAFROMFSTR(flash), n) == 0);
+}
 
 HASwitch::HASwitch(const char* uniqueId) :
     HABaseDeviceType(AHATOFSTR(HAComponentSwitch), uniqueId),
@@ -11,9 +29,25 @@ HASwitch::HASwitch(const char* uniqueId) :
     _retain(false),
     _optimistic(false),
     _currentState(false),
+    _payloadOn(nullptr),
+    _payloadOff(nullptr),
+    _stateOn(nullptr),
+    _stateOff(nullptr),
+    _valueTemplate(nullptr),
+    _commandTemplate(nullptr),
     _commandCallback(nullptr)
 {
 
+}
+
+void HASwitch::setValueTemplate(const char* valueTemplate)
+{
+    _valueTemplate = valueTemplate;
+}
+
+void HASwitch::setCommandTemplate(const char* commandTemplate)
+{
+    _commandTemplate = commandTemplate;
 }
 
 bool HASwitch::setState(const bool state, const bool force)
@@ -22,12 +56,9 @@ bool HASwitch::setState(const bool state, const bool force)
         return true;
     }
 
-    if (publishState(state)) {
-        _currentState = state;
-        return true;
-    }
-
-    return false;
+    const bool published = publishState(state);
+    _currentState = state;
+    return published;
 }
 
 void HASwitch::buildSerializer()
@@ -36,13 +67,38 @@ void HASwitch::buildSerializer()
         return;
     }
 
-    _serializer = new HASerializer(this, 12); // 12 - max properties nb
+    _serializer = new HASerializer(this, 24);
     _serializer->set(AHATOFSTR(HANameProperty), _name);
     setEntityIdProperty(_serializer);
     _serializer->set(HASerializer::WithUniqueId);
+    applyCommonEntityProperties(_serializer);
     _serializer->set(AHATOFSTR(HADeviceClassProperty), _class);
     _serializer->set(AHATOFSTR(HAStateEntityCategory), nonEmptyString(_entityCategory));
     _serializer->set(AHATOFSTR(HAIconProperty), _icon);
+
+    if (nonEmptyString(_payloadOn)) {
+        _serializer->set(AHATOFSTR(HAPayloadOnProperty), _payloadOn);
+    }
+
+    if (nonEmptyString(_payloadOff)) {
+        _serializer->set(AHATOFSTR(HAPayloadOffProperty), _payloadOff);
+    }
+
+    if (nonEmptyString(_stateOn)) {
+        _serializer->set(AHATOFSTR(HAStateOnDiscoveryProperty), _stateOn);
+    }
+
+    if (nonEmptyString(_stateOff)) {
+        _serializer->set(AHATOFSTR(HAStateOffDiscoveryProperty), _stateOff);
+    }
+
+    if (nonEmptyString(_valueTemplate)) {
+        _serializer->set(AHATOFSTR(HAValueTemplateProperty), _valueTemplate);
+    }
+
+    if (nonEmptyString(_commandTemplate)) {
+        _serializer->set(AHATOFSTR(HACommandTemplateProperty), _commandTemplate);
+    }
 
     // optional property
     if (_retain) {
@@ -73,7 +129,7 @@ HASerializer* HASwitch::buildDeviceDiscoverySerializer()
         return nullptr;
     }
 
-    HASerializer* serializer = new HASerializer(this, 12);
+    HASerializer* serializer = new HASerializer(this, 24);
     serializer->set(
         AHATOFSTR(HAPlatformProperty),
         AHATOFSTR(HAComponentSwitch),
@@ -82,9 +138,34 @@ HASerializer* HASwitch::buildDeviceDiscoverySerializer()
     serializer->set(AHATOFSTR(HANameProperty), _name);
     setEntityIdProperty(serializer);
     serializer->set(HASerializer::WithUniqueId);
+    applyCommonEntityProperties(serializer);
     serializer->set(AHATOFSTR(HADeviceClassProperty), _class);
     serializer->set(AHATOFSTR(HAStateEntityCategory), nonEmptyString(_entityCategory));
     serializer->set(AHATOFSTR(HAIconProperty), _icon);
+
+    if (nonEmptyString(_payloadOn)) {
+        serializer->set(AHATOFSTR(HAPayloadOnProperty), _payloadOn);
+    }
+
+    if (nonEmptyString(_payloadOff)) {
+        serializer->set(AHATOFSTR(HAPayloadOffProperty), _payloadOff);
+    }
+
+    if (nonEmptyString(_stateOn)) {
+        serializer->set(AHATOFSTR(HAStateOnDiscoveryProperty), _stateOn);
+    }
+
+    if (nonEmptyString(_stateOff)) {
+        serializer->set(AHATOFSTR(HAStateOffDiscoveryProperty), _stateOff);
+    }
+
+    if (nonEmptyString(_valueTemplate)) {
+        serializer->set(AHATOFSTR(HAValueTemplateProperty), _valueTemplate);
+    }
+
+    if (nonEmptyString(_commandTemplate)) {
+        serializer->set(AHATOFSTR(HACommandTemplateProperty), _commandTemplate);
+    }
 
     if (_retain) {
         serializer->set(
@@ -132,8 +213,6 @@ void HASwitch::onMqttMessage(
     const uint16_t length
 )
 {
-    (void)payload;
-
     const bool hasCommandCallback =
         _commandCallback
 #if defined(ARDUINOHA_ENABLE_STDFUNCTION)
@@ -146,7 +225,24 @@ void HASwitch::onMqttMessage(
         uniqueId(),
         AHATOFSTR(HACommandTopic)
     )) {
-        bool state = length == strlen_P(HAStateOn);
+        const bool isOn = payloadEquals(
+            payload,
+            length,
+            _payloadOn,
+            AHATOFSTR(HAStateOn)
+        );
+        const bool isOff = payloadEquals(
+            payload,
+            length,
+            _payloadOff,
+            AHATOFSTR(HAStateOff)
+        );
+
+        if (!isOn && !isOff) {
+            return;
+        }
+
+        const bool state = isOn;
         if (_commandCallback) {
             _commandCallback(state, this);
         }
@@ -160,9 +256,33 @@ void HASwitch::onMqttMessage(
 
 bool HASwitch::publishState(const bool state)
 {
+    if (state) {
+        if (nonEmptyString(_stateOn)) {
+            return publishOnDataTopic(
+                AHATOFSTR(HAStateTopic),
+                _stateOn,
+                true
+            );
+        }
+
+        return publishOnDataTopic(
+            AHATOFSTR(HAStateTopic),
+            AHATOFSTR(HAStateOn),
+            true
+        );
+    }
+
+    if (nonEmptyString(_stateOff)) {
+        return publishOnDataTopic(
+            AHATOFSTR(HAStateTopic),
+            _stateOff,
+            true
+        );
+    }
+
     return publishOnDataTopic(
         AHATOFSTR(HAStateTopic),
-        AHATOFSTR(state ? HAStateOn : HAStateOff),
+        AHATOFSTR(HAStateOff),
         true
     );
 }

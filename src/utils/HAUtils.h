@@ -47,6 +47,12 @@ public:
         const byte* src,
         const uint16_t length
     );
+
+    /**
+     * Counts semicolon-separated segments (e.g. select/sensor options string).
+     * Empty string yields 0; a string without semicolons yields 1.
+     */
+    static uint8_t countSemicolonSeparatedOptions(const char* options);
 };
 
 #endif

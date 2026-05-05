@@ -3,6 +3,8 @@
 
 #include <Arduino.h>
 #include "../ArduinoHADefines.h"
+#include "../utils/HAAvailabilityConfig.h"
+#include "../utils/HANumeric.h"
 
 class HAMqtt;
 class HASerializer;
@@ -127,6 +129,36 @@ public:
     inline const char* getEntityCategory() const
         { return _entityCategory; }
 
+    void setEnabledByDefault(bool enabled);
+    void clearEnabledByDefault();
+
+    void setEntityPicture(const char* url);
+    void clearEntityPicture();
+
+    void setQos(uint8_t qos);
+    void clearQos();
+
+    void setEncoding(const char* encoding);
+    void clearEncoding();
+
+    void setPayloadAvailable(const char* payload);
+    void setPayloadNotAvailable(const char* payload);
+
+    void setAvailabilityMode(const char* mode);
+
+    /**
+     * Adds a full-topic availability entry for discovery (`avty` list) and publishing.
+     * Only used when this entity does not use shared device availability.
+     */
+    bool addAvailabilityEntry(
+        const char* topic,
+        const char* valueTemplate = nullptr,
+        const char* payloadAvailable = nullptr,
+        const char* payloadNotAvailable = nullptr
+    );
+
+    void clearAvailabilityEntries();
+
     /**
      * Sets availability of the device type.
      * Setting the initial availability enables availability reporting for this device type.
@@ -185,6 +217,19 @@ protected:
      * Follow implementation of the existing device types to get better understanding of the logic.
      */
     virtual void buildSerializer() { };
+
+    /**
+     * Writes shared MQTT discovery fields (enabled_by_default, entity_picture, qos, encoding).
+     */
+    void applyCommonEntityProperties(
+        HASerializer* serializer,
+        bool includeEncoding = true
+    ) const;
+
+    /**
+     * Populates availability-related discovery entries. Called from HASerializer::WithAvailability.
+     */
+    void configureAvailabilityEntries(HASerializer* serializer) const;
 
     /**
      * This method is called each time the MQTT connection is acquired.
@@ -267,6 +312,11 @@ protected:
     );
 
     /**
+     * Publishes a RAM payload on an already fully-qualified MQTT topic.
+     */
+    bool publishAbsolute(const char* fullTopic, const char* payload, bool retained = false);
+
+    /**
      * Adds the preferred entity ID property to the serializer.
      * `default_entity_id` takes precedence and the legacy `object_id` is only
      * emitted when no default entity ID was configured.
@@ -310,6 +360,17 @@ protected:
     /// HASerializer that belongs to this device type. It can be nullptr.
     HASerializer* _serializer;
 
+    bool _hasEnabledByDefault;
+    bool _enabledByDefault;
+    const char* _entityPicture;
+    bool _hasQos;
+    HANumeric _qosNumeric;
+    const char* _encoding;
+    const char* _payloadAvailable;
+    const char* _payloadNotAvailable;
+    const char* _availabilityMode;
+    HAAvailabilityConfig _availabilityList;
+
 private:
     enum Availability {
         AvailabilityDefault = 0,
@@ -319,7 +380,12 @@ private:
 
     /// The current availability of this device type. AvailabilityDefault means that the initial availability was never set.
     Availability _availability;
+
+    const char* effectivePayloadAvailable() const;
+    const char* effectivePayloadNotAvailable() const;
+
     friend class HAMqtt;
+    friend class HASerializer;
 };
 
 #endif

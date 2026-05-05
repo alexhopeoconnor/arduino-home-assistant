@@ -25,12 +25,9 @@ bool HASensorNumber::setValue(const HANumeric& value, const bool force)
         return true;
     }
 
-    if (publishValue(value)) {
-        _currentValue = value;
-        return true;
-    }
-
-    return false;
+    const bool published = publishValue(value);
+    _currentValue = value;
+    return published;
 }
 
 void HASensorNumber::onMqttConnected()

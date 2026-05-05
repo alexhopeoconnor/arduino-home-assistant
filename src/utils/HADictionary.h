@@ -83,7 +83,33 @@ extern const char HASwingModesProperty[];
 extern const char HAModesProperty[];
 extern const char HATemperatureCommandTemplateProperty[];
 extern const char HAPayloadOnProperty[];
+extern const char HAPayloadOffProperty[];
+extern const char HAPayloadAvailableProperty[];
+extern const char HAPayloadNotAvailableProperty[];
+extern const char HAAvailabilityListProperty[];
+extern const char HAAvailabilityModeProperty[];
 extern const char HAExpireAfterProperty[];
+extern const char HAOffDelayProperty[];
+extern const char HAEnabledByDefaultProperty[];
+extern const char HAEntityPictureProperty[];
+extern const char HAQosProperty[];
+extern const char HAStateOnDiscoveryProperty[];
+extern const char HAStateOffDiscoveryProperty[];
+extern const char HASuggestedDisplayPrecisionProperty[];
+extern const char HAJsonAttributesTemplateProperty[];
+extern const char HASensorOptionsProperty[];
+extern const char HALastResetValueTemplateProperty[];
+extern const char HAPayloadResetProperty[];
+extern const char HAPayloadPressProperty[];
+
+// device (discovery `dev` object)
+extern const char HADeviceModelIdProperty[];
+extern const char HADeviceHwVersionProperty[];
+extern const char HADeviceSerialNumberProperty[];
+extern const char HADeviceSuggestedAreaProperty[];
+extern const char HADeviceViaDeviceProperty[];
+extern const char HADeviceConnectionsProperty[];
+extern const char HAOriginSupportUrlProperty[];
 
 // topics
 extern const char HAConfigTopic[];

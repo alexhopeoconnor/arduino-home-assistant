@@ -72,6 +72,20 @@ public:
     inline void setIcon(const char* icon)
         { _icon = icon; }
 
+    inline void setPayloadOn(const char* payload)
+        { _payloadOn = payload; }
+
+    inline void setPayloadOff(const char* payload)
+        { _payloadOff = payload; }
+
+    inline void setForceUpdate(bool forceUpdate)
+        { _forceUpdate = forceUpdate; }
+
+    void setOffDelay(uint16_t seconds);
+    void clearOffDelay();
+
+    void setValueTemplate(const char* valueTemplate);
+
 protected:
     virtual void buildSerializer() override;
     virtual HASerializer* buildDeviceDiscoverySerializer() override;
@@ -96,6 +110,12 @@ private:
 
     /// It defines the number of seconds after the sensor’s state expires, if it’s not updated. By default the sensors state never expires.
     HANumeric _expireAfter;
+
+    const char* _payloadOn;
+    const char* _payloadOff;
+    bool _forceUpdate;
+    HANumeric _offDelay;
+    const char* _valueTemplate;
 
     /// Current state of the sensor. By default it's false.
     bool _currentState;

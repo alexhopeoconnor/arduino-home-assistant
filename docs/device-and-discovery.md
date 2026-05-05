@@ -13,6 +13,8 @@ Represents the physical board in Home Assistant: one device can expose multiple 
 **Optional metadata** (each costs some RAM/flash; skip on tiny MCUs unless needed):
 
 - `setName`, `setSoftwareVersion`, `setManufacturer`, `setModel`, `setConfigurationUrl`
+- `setModelId`, `setHardwareVersion`, `setSerialNumber`, `setSuggestedArea`, `setViaDevice`
+- `addConnection("mac", "aa:bb:cc:dd:ee:ff")` or `setConnectionsJson("[[\"mac\",\"aa:bb:cc:dd:ee:ff\"]]")`
 
 String setters take **pointers whose contents are not copied** — use literals or storage that outlives the call.
 
@@ -41,7 +43,27 @@ mqtt.setDataPrefix("myDataPrefix");
 - **Default:** one retained discovery topic per entity (single-component discovery).
 - **Optional:** call `HAMqtt::enableDeviceDiscovery()` to publish a single **device** discovery payload with components under `cmps` (see project README for migration notes).
 
+Device discovery can also publish richer origin/device metadata, for example:
+
+```cpp
+device.setModelId("esp32-s3-devkit");
+device.setHardwareVersion("rev-b");
+device.setSerialNumber("SN-00042");
+device.setSuggestedArea("Garage");
+device.setViaDevice("main_gateway");
+device.addConnection("mac", "AA:BB:CC:DD:EE:FF");
+mqtt.setOriginSupportUrl("https://example.com/device-help");
+```
+
 For entity identifiers in Home Assistant, prefer **`setDefaultEntityId()`** over legacy **`setObjectId()`**.
+
+Common entity discovery metadata can be configured on most entity types via:
+
+- `setEnabledByDefault(bool)`
+- `setEntityPicture(const char*)`
+- `setQos(uint8_t)`
+- `setEncoding(const char*)`
+- `setEntityCategory(const char*)`
 
 ### Runtime discovery changes
 

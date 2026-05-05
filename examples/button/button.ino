@@ -33,6 +33,8 @@ void setup() {
     // optional properties
     buttonA.setIcon("mdi:fire");
     buttonA.setName("Click me A");
+    // buttonA.setPayloadPress("PRESS_A");
+    // buttonA.setCommandTemplate("{{ value_json.command }}");
     buttonB.setIcon("mdi:home");
     buttonB.setName("Click me B");
 

@@ -2,7 +2,9 @@
 #ifndef EX_ARDUINOHA_NUMBER
 
 #include "../HAMqtt.h"
+#include "../utils/HADictionary.h"
 #include "../utils/HASerializer.h"
+#include <string.h>
 
 HANumber::HANumber(const char* uniqueId, const NumberPrecision precision) :
     HABaseDeviceType(AHATOFSTR(HAComponentNumber), uniqueId),
@@ -17,9 +19,27 @@ HANumber::HANumber(const char* uniqueId, const NumberPrecision precision) :
     _maxValue(),
     _step(),
     _currentState(),
-    _commandCallback(nullptr)
+    _commandCallback(nullptr),
+    _commandTemplate(nullptr),
+    _valueTemplate(nullptr),
+    _payloadReset(nullptr)
 {
 
+}
+
+void HANumber::setValueTemplate(const char* valueTemplate)
+{
+    _valueTemplate = valueTemplate;
+}
+
+void HANumber::setCommandTemplate(const char* commandTemplate)
+{
+    _commandTemplate = commandTemplate;
+}
+
+void HANumber::setPayloadReset(const char* payloadReset)
+{
+    _payloadReset = payloadReset;
 }
 
 bool HANumber::setState(const HANumeric& state, const bool force)
@@ -28,12 +48,9 @@ bool HANumber::setState(const HANumeric& state, const bool force)
         return true;
     }
 
-    if (publishState(state)) {
-        _currentState = state;
-        return true;
-    }
-
-    return false;
+    const bool published = publishState(state);
+    _currentState = state;
+    return published;
 }
 
 void HANumber::updateMinMaxStep(const float min, const float max, const float step)
@@ -50,10 +67,11 @@ void HANumber::buildSerializer()
         return;
     }
 
-    _serializer = new HASerializer(this, 17); // 17 - max properties nb
+    _serializer = new HASerializer(this, 24);
     _serializer->set(AHATOFSTR(HANameProperty), _name);
     setEntityIdProperty(_serializer);
     _serializer->set(HASerializer::WithUniqueId);
+    applyCommonEntityProperties(_serializer);
     _serializer->set(AHATOFSTR(HADeviceClassProperty), _class);
     _serializer->set(AHATOFSTR(HAStateEntityCategory), nonEmptyString(_entityCategory));
     _serializer->set(AHATOFSTR(HAIconProperty), _icon);
@@ -63,11 +81,27 @@ void HANumber::buildSerializer()
         getModeProperty(),
         HASerializer::ProgmemPropertyValue
     );
-    _serializer->set(
-        AHATOFSTR(HACommandTemplateProperty),
-        getCommandTemplate(),
-        HASerializer::ProgmemPropertyValue
-    );
+
+    if (nonEmptyString(_valueTemplate)) {
+        _serializer->set(AHATOFSTR(HAValueTemplateProperty), _valueTemplate);
+    }
+
+    if (nonEmptyString(_payloadReset)) {
+        _serializer->set(AHATOFSTR(HAPayloadResetProperty), _payloadReset);
+    }
+
+    if (nonEmptyString(_commandTemplate)) {
+        _serializer->set(
+            AHATOFSTR(HACommandTemplateProperty),
+            _commandTemplate
+        );
+    } else if (getBuiltInCommandTemplate()) {
+        _serializer->set(
+            AHATOFSTR(HACommandTemplateProperty),
+            getBuiltInCommandTemplate(),
+            HASerializer::ProgmemPropertyValue
+        );
+    }
 
     if (_minValue.isSet()) {
         _serializer->set(
@@ -121,7 +155,7 @@ HASerializer* HANumber::buildDeviceDiscoverySerializer()
         return nullptr;
     }
 
-    HASerializer* serializer = new HASerializer(this, 17);
+    HASerializer* serializer = new HASerializer(this, 24);
     serializer->set(
         AHATOFSTR(HAPlatformProperty),
         AHATOFSTR(HAComponentNumber),
@@ -130,6 +164,7 @@ HASerializer* HANumber::buildDeviceDiscoverySerializer()
     serializer->set(AHATOFSTR(HANameProperty), _name);
     setEntityIdProperty(serializer);
     serializer->set(HASerializer::WithUniqueId);
+    applyCommonEntityProperties(serializer);
     serializer->set(AHATOFSTR(HADeviceClassProperty), _class);
     serializer->set(AHATOFSTR(HAStateEntityCategory), nonEmptyString(_entityCategory));
     serializer->set(AHATOFSTR(HAIconProperty), _icon);
@@ -139,11 +174,27 @@ HASerializer* HANumber::buildDeviceDiscoverySerializer()
         getModeProperty(),
         HASerializer::ProgmemPropertyValue
     );
-    serializer->set(
-        AHATOFSTR(HACommandTemplateProperty),
-        getCommandTemplate(),
-        HASerializer::ProgmemPropertyValue
-    );
+
+    if (nonEmptyString(_valueTemplate)) {
+        serializer->set(AHATOFSTR(HAValueTemplateProperty), _valueTemplate);
+    }
+
+    if (nonEmptyString(_payloadReset)) {
+        serializer->set(AHATOFSTR(HAPayloadResetProperty), _payloadReset);
+    }
+
+    if (nonEmptyString(_commandTemplate)) {
+        serializer->set(
+            AHATOFSTR(HACommandTemplateProperty),
+            _commandTemplate
+        );
+    } else if (getBuiltInCommandTemplate()) {
+        serializer->set(
+            AHATOFSTR(HACommandTemplateProperty),
+            getBuiltInCommandTemplate(),
+            HASerializer::ProgmemPropertyValue
+        );
+    }
 
     if (_minValue.isSet()) {
         serializer->set(
@@ -263,6 +314,23 @@ void HANumber::handleCommand(const uint8_t* cmd, const uint16_t length)
         return;
     }
 
+    if (
+        _payloadReset
+        && _payloadReset[0] != '\0'
+        && length == strlen(_payloadReset)
+        && memcmp(cmd, _payloadReset, length) == 0
+    ) {
+        if (_commandCallback) {
+            _commandCallback(HANumeric(), this);
+        }
+#if defined(ARDUINOHA_ENABLE_STDFUNCTION)
+        if (_commandStdCallback) {
+            _commandStdCallback(HANumeric(), this);
+        }
+#endif
+        return;
+    }
+
     if (memcmp_P(cmd, HAStateNone, length) == 0) {
         if (_commandCallback) {
             _commandCallback(HANumeric(), this);
@@ -302,7 +370,7 @@ const __FlashStringHelper* HANumber::getModeProperty() const
     }
 }
 
-const __FlashStringHelper* HANumber::getCommandTemplate()
+const __FlashStringHelper* HANumber::getBuiltInCommandTemplate() const
 {
     switch (_precision) {
     case PrecisionP1:

@@ -17,7 +17,13 @@ extern void test_MqttTest_maximum_number_of_device_types(void);
 extern void test_MqttTest_reconnect_interval_default_value(void);
 extern void test_MqttTest_reconnect_interval_setter(void);
 extern void test_MqttTest_reconnect_interval_throttles_attempts(void);
-extern void test_MqttTest_publish_attempt_from_message_callback_is_rejected(void);
+extern void test_MqttTest_publish_from_message_callback_is_deferred_and_flushed(void);
+extern void test_MqttTest_deferred_publish_order_is_preserved(void);
+extern void test_MqttTest_processing_message_flag_only_wraps_inbound_dispatch(void);
+extern void test_MqttTest_streaming_publish_from_message_callback_is_deferred_and_flushed(void);
+extern void test_MqttTest_deferred_publish_is_kept_across_disconnect_and_retried_from_loop(void);
+extern void test_MqttTest_failed_deferred_flush_keeps_queue_and_retries_in_order(void);
+extern void test_MqttTest_mixed_deferred_publish_order_is_preserved(void);
 
 extern void test_DeviceTest_default_unique_id(void);
 extern void test_DeviceTest_unique_id_constructor_char(void);

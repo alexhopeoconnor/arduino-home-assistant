@@ -23,7 +23,8 @@ public:
         UnknownEntryType = 0,
         PropertyEntryType,
         TopicEntryType,
-        FlagEntryType
+        FlagEntryType,
+        AvailabilityArrayEntryType
     };
 
     /// The type of a flag for a FlagEntryType.
@@ -40,7 +41,9 @@ public:
         ProgmemPropertyValue,
         BoolPropertyType,
         NumberPropertyType,
-        ArrayPropertyType
+        ArrayPropertyType,
+        /// Raw JSON fragment (no quoting); value is a null-terminated RAM string.
+        JsonLiteralPropertyValue
     };
 
     /// Representation of a single entry in the object.
@@ -198,6 +201,8 @@ public:
      */
     bool flush() const;
 
+    friend class HABaseDeviceType;
+
 private:
     /// Pointer to the device type that owns the serializer.
     HABaseDeviceType* _deviceType;
@@ -228,6 +233,10 @@ private:
      *  Calculates the size of the entry of type `TopicEntryType`.
      */
     uint16_t calculateTopicEntrySize(const SerializerEntry* entry) const;
+
+    uint16_t calculateAvailabilityArrayEntrySize(
+        const SerializerEntry* entry
+    ) const;
 
     /**
      * Calculates the size of the entry of type `FlagEntryType`.
@@ -260,6 +269,8 @@ private:
      * Flushes the entry of type `TopicEntryType` to the MQTT.
      */
     bool flushTopic(const SerializerEntry* entry) const;
+
+    bool flushAvailabilityArray(const SerializerEntry* entry) const;
 
     /**
      * Flushes the entry of type `FlagEntryType` to the MQTT.

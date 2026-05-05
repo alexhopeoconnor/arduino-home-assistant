@@ -2,6 +2,8 @@
 #ifndef EX_ARDUINOHA_SELECT
 
 #include "../HAMqtt.h"
+#include "../utils/HAUtils.h"
+#include "../utils/HADictionary.h"
 #include "../utils/HASerializer.h"
 
 HASelect::HASelect(const char* uniqueId) :
@@ -11,6 +13,8 @@ HASelect::HASelect(const char* uniqueId) :
     _icon(nullptr),
     _retain(false),
     _optimistic(false),
+    _valueTemplate(nullptr),
+    _commandTemplate(nullptr),
     _commandCallback(nullptr)
 #if defined(ARDUINOHA_ENABLE_STDFUNCTION)
     , _commandStdCallback()
@@ -35,13 +39,23 @@ HASelect::~HASelect()
     }
 }
 
+void HASelect::setValueTemplate(const char* valueTemplate)
+{
+    _valueTemplate = valueTemplate;
+}
+
+void HASelect::setCommandTemplate(const char* commandTemplate)
+{
+    _commandTemplate = commandTemplate;
+}
+
 void HASelect::setOptions(const char* options)
 {
     if (!options || _options) { // options can be set only once
         return;
     }
 
-    const uint16_t optionsNb = countOptionsInString(options);
+    const uint16_t optionsNb = HAUtils::countSemicolonSeparatedOptions(options);
     if (optionsNb == 0) {
         return;
     }
@@ -83,12 +97,13 @@ bool HASelect::setState(const int8_t state, const bool force)
         return true;
     }
 
-    if (publishState(state)) {
-        _currentState = state;
-        return true;
+    if (!_options || state >= _options->getItemsNb()) {
+        return false;
     }
 
-    return false;
+    const bool published = publishState(state);
+    _currentState = state;
+    return published;
 }
 
 const char* HASelect::getCurrentOption() const
@@ -102,10 +117,11 @@ void HASelect::buildSerializer()
         return;
     }
 
-    _serializer = new HASerializer(this, 12); // 12 - max properties nb
+    _serializer = new HASerializer(this, 20);
     _serializer->set(AHATOFSTR(HANameProperty), _name);
     setEntityIdProperty(_serializer);
     _serializer->set(HASerializer::WithUniqueId);
+    applyCommonEntityProperties(_serializer);
     _serializer->set(AHATOFSTR(HAStateEntityCategory), nonEmptyString(_entityCategory));
     _serializer->set(AHATOFSTR(HAIconProperty), _icon);
     _serializer->set(
@@ -113,6 +129,14 @@ void HASelect::buildSerializer()
         _options,
         HASerializer::ArrayPropertyType
     );
+
+    if (nonEmptyString(_valueTemplate)) {
+        _serializer->set(AHATOFSTR(HAValueTemplateProperty), _valueTemplate);
+    }
+
+    if (nonEmptyString(_commandTemplate)) {
+        _serializer->set(AHATOFSTR(HACommandTemplateProperty), _commandTemplate);
+    }
 
     if (_retain) {
         _serializer->set(
@@ -142,7 +166,7 @@ HASerializer* HASelect::buildDeviceDiscoverySerializer()
         return nullptr;
     }
 
-    HASerializer* serializer = new HASerializer(this, 12);
+    HASerializer* serializer = new HASerializer(this, 20);
     serializer->set(
         AHATOFSTR(HAPlatformProperty),
         AHATOFSTR(HAComponentSelect),
@@ -151,6 +175,7 @@ HASerializer* HASelect::buildDeviceDiscoverySerializer()
     serializer->set(AHATOFSTR(HANameProperty), _name);
     setEntityIdProperty(serializer);
     serializer->set(HASerializer::WithUniqueId);
+    applyCommonEntityProperties(serializer);
     serializer->set(AHATOFSTR(HAStateEntityCategory), nonEmptyString(_entityCategory));
     serializer->set(AHATOFSTR(HAIconProperty), _icon);
     serializer->set(
@@ -158,6 +183,14 @@ HASerializer* HASelect::buildDeviceDiscoverySerializer()
         _options,
         HASerializer::ArrayPropertyType
     );
+
+    if (nonEmptyString(_valueTemplate)) {
+        serializer->set(AHATOFSTR(HAValueTemplateProperty), _valueTemplate);
+    }
+
+    if (nonEmptyString(_commandTemplate)) {
+        serializer->set(AHATOFSTR(HACommandTemplateProperty), _commandTemplate);
+    }
 
     if (_retain) {
         serializer->set(
@@ -256,25 +289,7 @@ bool HASelect::publishState(const int8_t state)
 
 uint8_t HASelect::countOptionsInString(const char* options) const
 {
-    // the given string is treated as a single option if there are no semicolons
-    uint8_t optionsNb = 1;
-    const uint16_t optionsLen = strlen(options);
-
-    if (optionsLen == 0) {
-        return 0;
-    }
-
-    for (uint16_t i = 0; i < optionsLen; i++) {
-        if (options[i] == ';') {
-            if (optionsNb == 255) {
-                break;
-            }
-
-            optionsNb++;
-        }
-    }
-
-    return optionsNb;
+    return HAUtils::countSemicolonSeparatedOptions(options);
 }
 
 #endif

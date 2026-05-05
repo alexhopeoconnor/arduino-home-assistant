@@ -54,6 +54,9 @@ public:
     inline void setRetain(const bool retain)
         { _retain = retain; }
 
+    void setPayloadPress(const char* payload);
+    void setCommandTemplate(const char* commandTemplate);
+
     /**
      * Registers callback that will be called each time the press command from HA is received.
      * Please note that it's not possible to register multiple callbacks for the same button.
@@ -103,6 +106,9 @@ private:
 
     /// The retain flag for the HA commands.
     bool _retain;
+
+    const char* _payloadPress;
+    const char* _commandTemplate;
 
     /// The command callback that will be called once clicking the button in HA panel.
     HABUTTON_CALLBACK(_commandCallback);

@@ -676,3 +676,14 @@ void test_SensorNumberTest_publish_precision_mismatch(void) {
     TEST_ASSERT_EQUAL(mock->getFlushedMessagesNb(), 0);
 }
 
+void test_SensorNumberTest_disconnected_value_updates_local_shadow(void) {
+    initMqttTest(testDeviceId)
+
+    HASensorNumber sensor(testUniqueId, HASensorNumber::PrecisionP1);
+
+    TEST_ASSERT_FALSE(sensor.setValue(27.5f));
+    TEST_ASSERT_TRUE(sensor.getCurrentValue().isSet());
+    AHA_ASSERT_NEAR_FLOAT(27.5f, sensor.getCurrentValue().toFloat(), 0.1f);
+    TEST_ASSERT_EQUAL(0, mock->getFlushedMessagesNb());
+}
+

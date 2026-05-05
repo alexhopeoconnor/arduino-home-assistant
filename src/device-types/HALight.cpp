@@ -78,12 +78,9 @@ bool HALight::setState(const bool state, const bool force)
         return true;
     }
 
-    if (publishState(state)) {
-        _currentState = state;
-        return true;
-    }
-
-    return false;
+    const bool published = publishState(state);
+    _currentState = state;
+    return published;
 }
 
 bool HALight::setBrightness(const uint8_t brightness, const bool force)
@@ -92,12 +89,13 @@ bool HALight::setBrightness(const uint8_t brightness, const bool force)
         return true;
     }
 
-    if (publishBrightness(brightness)) {
-        _currentBrightness = brightness;
-        return true;
+    if (!(_features & BrightnessFeature)) {
+        return false;
     }
 
-    return false;
+    const bool published = publishBrightness(brightness);
+    _currentBrightness = brightness;
+    return published;
 }
 
 bool HALight::setColorTemperature(const uint16_t temperature, const bool force)
@@ -106,12 +104,13 @@ bool HALight::setColorTemperature(const uint16_t temperature, const bool force)
         return true;
     }
 
-    if (publishColorTemperature(temperature)) {
-        _currentColorTemperature = temperature;
-        return true;
+    if (!(_features & ColorTemperatureFeature)) {
+        return false;
     }
 
-    return false;
+    const bool published = publishColorTemperature(temperature);
+    _currentColorTemperature = temperature;
+    return published;
 }
 
 bool HALight::setRGBColor(const RGBColor& color, const bool force)
@@ -120,12 +119,13 @@ bool HALight::setRGBColor(const RGBColor& color, const bool force)
         return true;
     }
 
-    if (publishRGBColor(color)) {
-        _currentRGBColor = color;
-        return true;
+    if (!(_features & RGBFeature) || !color.isSet) {
+        return false;
     }
 
-    return false;
+    const bool published = publishRGBColor(color);
+    _currentRGBColor = color;
+    return published;
 }
 
 void HALight::buildSerializer()
@@ -134,10 +134,11 @@ void HALight::buildSerializer()
         return;
     }
 
-    _serializer = new HASerializer(this, 20); // 20 - max properties nb
+    _serializer = new HASerializer(this, 30);
     _serializer->set(AHATOFSTR(HANameProperty), _name);
     setEntityIdProperty(_serializer);
     _serializer->set(HASerializer::WithUniqueId);
+    applyCommonEntityProperties(_serializer);
     _serializer->set(AHATOFSTR(HAStateEntityCategory), nonEmptyString(_entityCategory));
     _serializer->set(AHATOFSTR(HAIconProperty), _icon);
 
@@ -208,7 +209,7 @@ HASerializer* HALight::buildDeviceDiscoverySerializer()
         return nullptr;
     }
 
-    HASerializer* serializer = new HASerializer(this, 20);
+    HASerializer* serializer = new HASerializer(this, 30);
     serializer->set(
         AHATOFSTR(HAPlatformProperty),
         AHATOFSTR(HAComponentLight),
@@ -217,6 +218,7 @@ HASerializer* HALight::buildDeviceDiscoverySerializer()
     serializer->set(AHATOFSTR(HANameProperty), _name);
     setEntityIdProperty(serializer);
     serializer->set(HASerializer::WithUniqueId);
+    applyCommonEntityProperties(serializer);
     serializer->set(AHATOFSTR(HAStateEntityCategory), nonEmptyString(_entityCategory));
     serializer->set(AHATOFSTR(HAIconProperty), _icon);
 

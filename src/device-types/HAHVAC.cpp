@@ -89,12 +89,9 @@ bool HAHVAC::setCurrentTemperature(const HANumeric& temperature, const bool forc
         return true;
     }
 
-    if (publishCurrentTemperature(temperature)) {
-        _currentTemperature = temperature;
-        return true;
-    }
-
-    return false;
+    const bool published = publishCurrentTemperature(temperature);
+    _currentTemperature = temperature;
+    return published;
 }
 
 bool HAHVAC::setAction(const Action action, const bool force)
@@ -103,12 +100,9 @@ bool HAHVAC::setAction(const Action action, const bool force)
         return true;
     }
 
-    if (publishAction(action)) {
-        _action = action;
-        return true;
-    }
-
-    return false;
+    const bool published = publishAction(action);
+    _action = action;
+    return published;
 }
 
 bool HAHVAC::setAuxState(const bool state, const bool force)
@@ -117,12 +111,9 @@ bool HAHVAC::setAuxState(const bool state, const bool force)
         return true;
     }
 
-    if (publishAuxState(state)) {
-        _auxState = state;
-        return true;
-    }
-
-    return false;
+    const bool published = publishAuxState(state);
+    _auxState = state;
+    return published;
 }
 
 bool HAHVAC::setFanMode(const FanMode mode, const bool force)
@@ -131,12 +122,9 @@ bool HAHVAC::setFanMode(const FanMode mode, const bool force)
         return true;
     }
 
-    if (publishFanMode(mode)) {
-        _fanMode = mode;
-        return true;
-    }
-
-    return false;
+    const bool published = publishFanMode(mode);
+    _fanMode = mode;
+    return published;
 }
 
 bool HAHVAC::setSwingMode(const SwingMode mode, const bool force)
@@ -145,12 +133,9 @@ bool HAHVAC::setSwingMode(const SwingMode mode, const bool force)
         return true;
     }
 
-    if (publishSwingMode(mode)) {
-        _swingMode = mode;
-        return true;
-    }
-
-    return false;
+    const bool published = publishSwingMode(mode);
+    _swingMode = mode;
+    return published;
 }
 
 bool HAHVAC::setMode(const Mode mode, const bool force)
@@ -159,12 +144,9 @@ bool HAHVAC::setMode(const Mode mode, const bool force)
         return true;
     }
 
-    if (publishMode(mode)) {
-        _mode = mode;
-        return true;
-    }
-
-    return false;
+    const bool published = publishMode(mode);
+    _mode = mode;
+    return published;
 }
 
 bool HAHVAC::setTargetTemperature(const HANumeric& temperature, const bool force)
@@ -177,12 +159,9 @@ bool HAHVAC::setTargetTemperature(const HANumeric& temperature, const bool force
         return true;
     }
 
-    if (publishTargetTemperature(temperature)) {
-        _targetTemperature = temperature;
-        return true;
-    }
-
-    return false;
+    const bool published = publishTargetTemperature(temperature);
+    _targetTemperature = temperature;
+    return published;
 }
 
 void HAHVAC::buildSerializer()
@@ -191,10 +170,11 @@ void HAHVAC::buildSerializer()
         return;
     }
 
-    _serializer = new HASerializer(this, 29); // 29 - max properties nb
+    _serializer = new HASerializer(this, 40);
     _serializer->set(AHATOFSTR(HANameProperty), _name);
     setEntityIdProperty(_serializer);
     _serializer->set(HASerializer::WithUniqueId);
+    applyCommonEntityProperties(_serializer);
     _serializer->set(AHATOFSTR(HAStateEntityCategory), nonEmptyString(_entityCategory));
     _serializer->set(AHATOFSTR(HAIconProperty), _icon);
 
@@ -369,7 +349,7 @@ HASerializer* HAHVAC::buildDeviceDiscoverySerializer()
         return nullptr;
     }
 
-    HASerializer* serializer = new HASerializer(this, 29);
+    HASerializer* serializer = new HASerializer(this, 40);
     serializer->set(
         AHATOFSTR(HAPlatformProperty),
         AHATOFSTR(HAComponentClimate),
@@ -378,6 +358,7 @@ HASerializer* HAHVAC::buildDeviceDiscoverySerializer()
     serializer->set(AHATOFSTR(HANameProperty), _name);
     setEntityIdProperty(serializer);
     serializer->set(HASerializer::WithUniqueId);
+    applyCommonEntityProperties(serializer);
     serializer->set(AHATOFSTR(HAStateEntityCategory), nonEmptyString(_entityCategory));
     serializer->set(AHATOFSTR(HAIconProperty), _icon);
 

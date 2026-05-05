@@ -11,6 +11,7 @@
 #include "../HAMqtt.h"
 #include "../utils/HAUtils.h"
 #include "../utils/HANumeric.h"
+#include "../utils/HAAvailabilityConfig.h"
 #include "../device-types/HABaseDeviceType.h"
 
 uint16_t HASerializer::calculateConfigTopicLength(
@@ -196,20 +197,9 @@ void HASerializer::set(const FlagType flag)
         entry->property = nullptr;
         entry->value = nullptr;
     } else if (flag == WithAvailability) {
-        HAMqtt* mqtt = HAMqtt::instance();
-        const bool isSharedAvailability = mqtt->getDevice()->isSharedAvailabilityEnabled();
-        const bool isAvailabilityConfigured = _deviceType->isAvailabilityConfigured();
-
-        if (!isSharedAvailability && !isAvailabilityConfigured) {
-            return; // not configured
+        if (_deviceType) {
+            _deviceType->configureAvailabilityEntries(this);
         }
-
-        SerializerEntry* entry = addEntry();
-        entry->type = TopicEntryType;
-        entry->property = AHATOFSTR(HAAvailabilityTopic);
-        entry->value = isSharedAvailability
-            ? mqtt->getDevice()->getAvailabilityTopic()
-            : nullptr;
     }
 }
 
@@ -290,6 +280,9 @@ uint16_t HASerializer::calculateEntrySize(const SerializerEntry* entry) const
     case TopicEntryType:
         return calculateTopicEntrySize(entry);
 
+    case AvailabilityArrayEntryType:
+        return calculateAvailabilityArrayEntrySize(entry);
+
     case FlagEntryType:
         return calculateFlagSize(
             static_cast<FlagType>(entry->subtype)
@@ -330,6 +323,25 @@ uint16_t HASerializer::calculateTopicEntrySize(
     }
 
     return size;
+}
+
+uint16_t HASerializer::calculateAvailabilityArrayEntrySize(
+    const SerializerEntry* entry
+) const
+{
+    if (!entry->value) {
+        return 0;
+    }
+
+    const HAAvailabilityConfig* cfg = static_cast<const HAAvailabilityConfig*>(
+        entry->value
+    );
+
+    return
+        strlen_P(HASerializerJsonPropertyPrefix) +
+        strlen_P(AHAFROMFSTR(entry->property)) +
+        strlen_P(HASerializerJsonPropertySuffix) +
+        cfg->calculateJsonSize();
 }
 
 uint16_t HASerializer::calculateFlagSize(const FlagType flag) const
@@ -400,6 +412,11 @@ uint16_t HASerializer::calculatePropertyValueSize(
         return array->calculateSize();
     }
 
+    case JsonLiteralPropertyValue: {
+        const char* value = static_cast<const char*>(entry->value);
+        return value ? strlen(value) : 0;
+    }
+
     default:
         return 0;
     }
@@ -420,6 +437,9 @@ bool HASerializer::flushEntry(const SerializerEntry* entry) const
 
     case TopicEntryType:
         return flushTopic(entry);
+
+    case AvailabilityArrayEntryType:
+        return flushAvailabilityArray(entry);
 
     case FlagEntryType:
         return flushFlag(entry);
@@ -480,6 +500,16 @@ bool HASerializer::flushEntryValue(const SerializerEntry* entry) const
         return true;
     }
 
+    case JsonLiteralPropertyValue: {
+        const char* value = static_cast<const char*>(entry->value);
+        if (!value) {
+            return false;
+        }
+
+        mqtt->writePayload(value, strlen(value));
+        return true;
+    }
+
     default:
         return false;
     }
@@ -520,6 +550,35 @@ bool HASerializer::flushTopic(const SerializerEntry* entry) const
     }
 
     mqtt->writePayload(AHATOFSTR(HASerializerJsonEscapeChar));
+    return true;
+}
+
+bool HASerializer::flushAvailabilityArray(const SerializerEntry* entry) const
+{
+    HAMqtt* mqtt = HAMqtt::instance();
+    if (!entry->value) {
+        return false;
+    }
+
+    const HAAvailabilityConfig* cfg = static_cast<const HAAvailabilityConfig*>(
+        entry->value
+    );
+
+    mqtt->writePayload(AHATOFSTR(HASerializerJsonPropertyPrefix));
+    mqtt->writePayload(entry->property);
+    mqtt->writePayload(AHATOFSTR(HASerializerJsonPropertySuffix));
+
+    const uint16_t jsonSize = cfg->calculateJsonSize();
+    if (jsonSize >= 512) {
+        return false;
+    }
+
+    char buf[512];
+    if (!cfg->serialize(buf)) {
+        return false;
+    }
+
+    mqtt->writePayload(buf, jsonSize);
     return true;
 }
 

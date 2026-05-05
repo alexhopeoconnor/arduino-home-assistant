@@ -121,6 +121,9 @@ public:
     inline void setPattern(const char* pattern)
         { _pattern = pattern; }
 
+    void setValueTemplate(const char* valueTemplate);
+    void setCommandTemplate(const char* commandTemplate);
+
     /**
      * Registers callback that will be called each time text command from HA is received.
      * Please note that it's not possible to register multiple callbacks for the same text entity.
@@ -196,6 +199,9 @@ private:
 
     /// Regular expression pattern accepted by Home Assistant. It can be nullptr.
     const char* _pattern;
+
+    const char* _valueTemplate;
+    const char* _commandTemplate;
 
     /// The current state of the text. It can be nullptr if state wasn't set.
     const char* _currentState;

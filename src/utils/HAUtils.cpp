@@ -3,6 +3,7 @@
 #endif
 
 #include <Arduino.h>
+#include <string.h>
 #include "HAUtils.h"
 #include "HADictionary.h"
 
@@ -45,4 +46,30 @@ char* HAUtils::byteArrayToStr(
     byteArrayToStr(dst, src, length);
 
     return dst;
+}
+
+uint8_t HAUtils::countSemicolonSeparatedOptions(const char* options)
+{
+    if (!options) {
+        return 0;
+    }
+
+    uint8_t optionsNb = 1;
+    const uint16_t optionsLen = strlen(options);
+
+    if (optionsLen == 0) {
+        return 0;
+    }
+
+    for (uint16_t i = 0; i < optionsLen; i++) {
+        if (options[i] == ';') {
+            if (optionsNb == 255) {
+                break;
+            }
+
+            optionsNb++;
+        }
+    }
+
+    return optionsNb;
 }

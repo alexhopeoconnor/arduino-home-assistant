@@ -41,9 +41,9 @@ void onCommandReceived(int8_t index, HASelect* caller)
     lastCommandCallbackCall.caller = caller;
 }
 
-void onCommandPublishAttempt(int8_t index, HASelect* caller)
+void onCommandDeferredPublish(int8_t index, HASelect* caller)
 {
-    TEST_ASSERT_FALSE(caller->setState(index));
+    TEST_ASSERT_TRUE(caller->setState(index));
 }
 
 void test_SelectTest_invalid_unique_id(void) {
@@ -482,18 +482,20 @@ void test_SelectTest_command_option_non_existing(void) {
     assertCommandCallbackNotCalled()
 }
 
-void test_SelectTest_callback_publish_attempt_is_rejected(void) {
+void test_SelectTest_callback_publish_is_deferred_until_after_dispatch(void) {
     prepareTest
 
     mock->connectDummy();
+    mqtt.resetDeferredPublishTestCounters();
     HASelect select(testUniqueId);
     select.setOptions("Option A;B;C");
-    select.onCommand(onCommandPublishAttempt);
+    select.onCommand(onCommandDeferredPublish);
 
     mock->fakeMessage(AHATOFSTR(CommandTopic), F("B"));
 
-    TEST_ASSERT_EQUAL(1, mock->getPublishCallsFromCallbackNb());
-    TEST_ASSERT_EQUAL(0, mock->getFlushedMessagesNb());
+    TEST_ASSERT_EQUAL_UINT16(1, mqtt.getDeferredPublishEnqueueCountForTest());
+    TEST_ASSERT_EQUAL_UINT8(1, mock->getFlushedMessagesNb());
+    AHA_ASSERT_MQTT_MESSAGE(mock, 0, AHATOFSTR(StateTopic), "B", true);
 }
 
 void test_SelectTest_different_select_command(void) {

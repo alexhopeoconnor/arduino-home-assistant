@@ -33,6 +33,11 @@ void setup() {
     // set icon (optional)
     led.setIcon("mdi:lightbulb");
     led.setName("My LED");
+    // led.setPayloadOn("ENABLE");
+    // led.setPayloadOff("DISABLE");
+    // led.setStateOn("running");
+    // led.setStateOff("stopped");
+    // led.setCommandTemplate("{{ value_json.command }}");
 
     // handle switch state
     led.onCommand(onSwitchCommand);

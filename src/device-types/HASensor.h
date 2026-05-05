@@ -4,6 +4,8 @@
 #include "HABaseDeviceType.h"
 #include "../utils/HANumeric.h"
 
+class HASerializerArray;
+
 #ifndef EX_ARDUINOHA_SENSOR
 
 /**
@@ -28,6 +30,8 @@ public:
      * @param features Features that should be enabled for the sensor.
      */
     HASensor(const char* uniqueId, const uint16_t features = DefaultFeatures);
+
+    virtual ~HASensor();
 
     /**
      * Publishes the MQTT message with the given value.
@@ -99,6 +103,18 @@ public:
     inline void setUnitOfMeasurement(const char* unitOfMeasurement)
         { _unitOfMeasurement = unitOfMeasurement; }
 
+    void setSuggestedDisplayPrecision(uint8_t precision);
+    void clearSuggestedDisplayPrecision();
+
+    /**
+     * Semicolon-separated options for device_class `enum`. Set only once.
+     */
+    void setOptions(const char* options);
+
+    void setValueTemplate(const char* valueTemplate);
+    void setJsonAttributesTemplate(const char* jsonAttributesTemplate);
+    void setLastResetValueTemplate(const char* lastResetValueTemplate);
+
 protected:
     virtual void buildSerializer() override final;
     virtual HASerializer* buildDeviceDiscoverySerializer() override;
@@ -127,6 +143,12 @@ private:
 
     /// It defines the number of seconds after the sensor’s state expires, if it’s not updated. By default the sensors state never expires.
     HANumeric _expireAfter;
+
+    HASerializerArray* _options;
+    HANumeric _suggestedDisplayPrecision;
+    const char* _valueTemplate;
+    const char* _jsonAttributesTemplate;
+    const char* _lastResetValueTemplate;
 };
 
 #endif

@@ -6,3 +6,6 @@ tmp/
 
 # Sphinx inventory (legacy); we ship Markdown-only under docs/
 docs/*.inv
+
+# Cursor IDE (local rules, not part of the library)
+.cursor/

@@ -103,6 +103,21 @@ public:
     inline void setOptimistic(const bool optimistic)
         { _optimistic = optimistic; }
 
+    inline void setPayloadOn(const char* payload)
+        { _payloadOn = payload; }
+
+    inline void setPayloadOff(const char* payload)
+        { _payloadOff = payload; }
+
+    inline void setStateOn(const char* state)
+        { _stateOn = state; }
+
+    inline void setStateOff(const char* state)
+        { _stateOff = state; }
+
+    void setValueTemplate(const char* valueTemplate);
+    void setCommandTemplate(const char* commandTemplate);
+
     /**
      * Registers callback that will be called each time the on/off command from HA is received.
      * Please note that it's not possible to register multiple callbacks for the same switch.
@@ -167,6 +182,13 @@ private:
 
     /// The current state of the switch. By default it's `false`.
     bool _currentState;
+
+    const char* _payloadOn;
+    const char* _payloadOff;
+    const char* _stateOn;
+    const char* _stateOff;
+    const char* _valueTemplate;
+    const char* _commandTemplate;
 
     /// The callback that will be called when switch command is received from the HA.
     HASWITCH_CALLBACK(_commandCallback);

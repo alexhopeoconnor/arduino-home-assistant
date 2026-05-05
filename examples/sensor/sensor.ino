@@ -23,6 +23,10 @@ void setup() {
     // configure sensor (optional)
     valve.setIcon("mdi:home");
     valve.setName("Water valve");
+    // valve.setValueTemplate("{{ value_json.state }}");
+    // valve.setDeviceClass("enum");
+    // valve.setOptions("open;opening;closed");
+    // valve.setDefaultEntityId("sensor.water_valve");
 
     mqtt.begin(BROKER_ADDR);
 }

@@ -42,9 +42,9 @@ void onCommandReceived(HANumeric number, HANumber* caller)
     lastCommandCallbackCall.caller = caller;
 }
 
-void onCommandPublishAttempt(HANumeric value, HANumber* caller)
+void onCommandDeferredPublish(HANumeric value, HANumber* caller)
 {
-    TEST_ASSERT_FALSE(caller->setState(value));
+    TEST_ASSERT_TRUE(caller->setState(value));
 }
 
 void test_NumberTest_invalid_unique_id(void) {
@@ -1015,17 +1015,19 @@ void test_NumberTest_command_number_float_p3(void) {
     assertCommandCallbackCalled(HANumeric(-1.234f, 3), &number)
 }
 
-void test_NumberTest_callback_publish_attempt_is_rejected(void) {
+void test_NumberTest_callback_publish_is_deferred_until_after_dispatch(void) {
     prepareTest
 
     mock->connectDummy();
+    mqtt.resetDeferredPublishTestCounters();
     HANumber number(testUniqueId);
-    number.onCommand(onCommandPublishAttempt);
+    number.onCommand(onCommandDeferredPublish);
 
     mock->fakeMessage(AHATOFSTR(CommandTopic), F("1234"));
 
-    TEST_ASSERT_EQUAL(1, mock->getPublishCallsFromCallbackNb());
-    TEST_ASSERT_EQUAL(0, mock->getFlushedMessagesNb());
+    TEST_ASSERT_EQUAL_UINT16(1, mqtt.getDeferredPublishEnqueueCountForTest());
+    TEST_ASSERT_EQUAL_UINT8(1, mock->getFlushedMessagesNb());
+    AHA_ASSERT_MQTT_MESSAGE(mock, 0, AHATOFSTR(StateTopic), "1234", true);
 }
 
 void test_NumberTest_command_number_invalid(void) {

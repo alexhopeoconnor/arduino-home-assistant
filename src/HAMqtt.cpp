@@ -1,6 +1,7 @@
 #include "HAMqtt.h"
 
 #include <cstdio>
+#include <cstring>
 
 #ifndef ARDUINOHA_TEST
 #include <PubSubClient.h>
@@ -22,6 +23,7 @@
     _discoveryPrefix(DefaultDiscoveryPrefix), \
     _dataPrefix(DefaultDataPrefix), \
     _deviceDiscoveryEnabled(false), \
+    _originSupportUrl(nullptr), \
     _username(nullptr), \
     _password(nullptr), \
     _lastConnectionAttemptAt(0), \
@@ -32,7 +34,12 @@
     _lastWillTopic(nullptr), \
     _lastWillMessage(nullptr), \
     _lastWillRetain(false), \
-    _currentState(StateDisconnected)
+    _currentState(StateDisconnected), \
+    _messageDispatchDepth(0), \
+    _deferredQueue{}, \
+    _deferredHead(0), \
+    _deferredCount(0), \
+    _deferredBuilder()
 
 static const char* DefaultDiscoveryPrefix = "homeassistant";
 static const char* DefaultDataPrefix = "aha";
@@ -76,6 +83,8 @@ HAMqtt::HAMqtt(
 
 HAMqtt::~HAMqtt()
 {
+    clearDeferredBuilder();
+    clearDeferredQueue();
     delete[] _devicesTypes;
 
 #ifdef ARDUINOHA_TEST
@@ -177,6 +186,7 @@ bool HAMqtt::disconnect()
 
     ARDUINOHA_DEBUG_PRINTLN(F("AHA: disconnecting"))
 
+    clearDeferredBuilder();
     _initialized = false;
     _lastConnectionAttemptAt = 0;
     _mqtt->disconnect();
@@ -197,6 +207,10 @@ void HAMqtt::loop()
 
     if (!result) {
         connectToServer();
+    }
+
+    if (_messageDispatchDepth == 0 && isConnected()) {
+        flushDeferredPublishes();
     }
 }
 
@@ -233,17 +247,33 @@ void HAMqtt::addDeviceType(HABaseDeviceType* deviceType)
 
 bool HAMqtt::publish(const char* topic, const char* payload, bool retained)
 {
-    if (!isConnected()) {
+    if (!isConnected() || !topic || !payload) {
         return false;
     }
+
+    const size_t len = strlen(payload);
+    if (len > UINT16_MAX) {
+        return false;
+    }
+
+    const uint16_t payloadLength = static_cast<uint16_t>(len);
 
     ARDUINOHA_DEBUG_PRINT(F("AHA: publishing "))
     ARDUINOHA_DEBUG_PRINT(topic)
     ARDUINOHA_DEBUG_PRINT(F(", len: "))
-    ARDUINOHA_DEBUG_PRINTLN(strlen(payload))
+    ARDUINOHA_DEBUG_PRINTLN(payloadLength)
 
-    _mqtt->beginPublish(topic, strlen(payload), retained);
-    _mqtt->write((const uint8_t*)(payload), strlen(payload));
+    if (isProcessingMessage()) {
+        return enqueueDeferredPublish(
+            topic,
+            reinterpret_cast<const uint8_t*>(payload),
+            payloadLength,
+            retained
+        );
+    }
+
+    _mqtt->beginPublish(topic, payloadLength, retained);
+    _mqtt->write(reinterpret_cast<const uint8_t*>(payload), payloadLength);
     return _mqtt->endPublish();
 }
 
@@ -258,7 +288,29 @@ bool HAMqtt::beginPublish(
     ARDUINOHA_DEBUG_PRINT(F(", len: "))
     ARDUINOHA_DEBUG_PRINTLN(payloadLength)
 
-    return _mqtt->beginPublish(topic, payloadLength, retained);
+    if (!isConnected() || !topic) {
+        return false;
+    }
+
+    if (!isProcessingMessage()) {
+        return _mqtt->beginPublish(topic, payloadLength, retained);
+    }
+
+    if (_deferredBuilder.active) {
+        return false;
+    }
+
+    const size_t topicLen = strlen(topic);
+
+    _deferredBuilder.topic = new char[topicLen + 1];
+    memcpy(_deferredBuilder.topic, topic, topicLen + 1);
+    _deferredBuilder.payload = payloadLength > 0 ? new uint8_t[payloadLength] : nullptr;
+    _deferredBuilder.expectedLength = payloadLength;
+    _deferredBuilder.writtenLength = 0;
+    _deferredBuilder.retained = retained;
+    _deferredBuilder.active = true;
+    _deferredBuilder.valid = true;
+    return true;
 }
 
 void HAMqtt::writePayload(const char* data, const uint16_t length)
@@ -268,17 +320,71 @@ void HAMqtt::writePayload(const char* data, const uint16_t length)
 
 void HAMqtt::writePayload(const uint8_t* data, const uint16_t length)
 {
+    if (isProcessingMessage() && _deferredBuilder.active) {
+        if (!_deferredBuilder.valid ||
+            (static_cast<uint32_t>(_deferredBuilder.writtenLength) + length) > _deferredBuilder.expectedLength) {
+            _deferredBuilder.valid = false;
+            return;
+        }
+
+        if (length > 0) {
+            memcpy(
+                _deferredBuilder.payload + _deferredBuilder.writtenLength,
+                data,
+                length
+            );
+        }
+
+        _deferredBuilder.writtenLength = static_cast<uint16_t>(_deferredBuilder.writtenLength + length);
+        return;
+    }
+
     _mqtt->write(data, length);
 }
 
 void HAMqtt::writePayload(const __FlashStringHelper* src)
 {
+    if (isProcessingMessage() && _deferredBuilder.active) {
+        PGM_P p = reinterpret_cast<PGM_P>(src);
+        const uint16_t chunkLen = static_cast<uint16_t>(strlen_P(p));
+        if (!_deferredBuilder.valid ||
+            (static_cast<uint32_t>(_deferredBuilder.writtenLength) + chunkLen) > _deferredBuilder.expectedLength) {
+            _deferredBuilder.valid = false;
+            return;
+        }
+
+        if (chunkLen > 0) {
+            memcpy_P(_deferredBuilder.payload + _deferredBuilder.writtenLength, p, chunkLen);
+            _deferredBuilder.writtenLength = static_cast<uint16_t>(_deferredBuilder.writtenLength + chunkLen);
+        }
+
+        return;
+    }
+
     _mqtt->print(src);
 }
 
 bool HAMqtt::endPublish()
 {
-    return _mqtt->endPublish();
+    if (!isProcessingMessage()) {
+        return _mqtt->endPublish();
+    }
+
+    if (!_deferredBuilder.active ||
+        !_deferredBuilder.valid ||
+        _deferredBuilder.writtenLength != _deferredBuilder.expectedLength) {
+        clearDeferredBuilder();
+        return false;
+    }
+
+    const bool ok = enqueueDeferredPublish(
+        _deferredBuilder.topic,
+        _deferredBuilder.payload,
+        _deferredBuilder.expectedLength,
+        _deferredBuilder.retained
+    );
+    clearDeferredBuilder();
+    return ok;
 }
 
 bool HAMqtt::subscribe(const char* topic)
@@ -296,12 +402,20 @@ void HAMqtt::processMessage(const char* topic, const uint8_t* payload, uint16_t 
     ARDUINOHA_DEBUG_PRINT(F(", len: "))
     ARDUINOHA_DEBUG_PRINTLN(length)
 
+    _messageDispatchDepth++;
+
     if (_messageCallback) {
         _messageCallback(topic, payload, length);
     }
 
     for (uint8_t i = 0; i < _devicesTypesNb; i++) {
         _devicesTypes[i]->onMqttMessage(topic, payload, length);
+    }
+
+    _messageDispatchDepth--;
+
+    if (_messageDispatchDepth == 0) {
+        flushDeferredPublishes();
     }
 }
 
@@ -398,15 +512,26 @@ bool HAMqtt::publishDeviceDiscovery()
         return false;
     }
 
-    char originPayload[64];
+    char originPayload[192];
     originPayload[0] = 0;
-    snprintf(
-        originPayload,
-        sizeof(originPayload),
-        "{\"name\":\"%s\",\"sw\":\"%s\"}",
-        DeviceDiscoveryOriginName,
-        ARDUINOHA_LIBRARY_VERSION
-    );
+    if (_originSupportUrl && _originSupportUrl[0] != '\0') {
+        snprintf(
+            originPayload,
+            sizeof(originPayload),
+            "{\"name\":\"%s\",\"sw\":\"%s\",\"url\":\"%s\"}",
+            DeviceDiscoveryOriginName,
+            ARDUINOHA_LIBRARY_VERSION,
+            _originSupportUrl
+        );
+    } else {
+        snprintf(
+            originPayload,
+            sizeof(originPayload),
+            "{\"name\":\"%s\",\"sw\":\"%s\"}",
+            DeviceDiscoveryOriginName,
+            ARDUINOHA_LIBRARY_VERSION
+        );
+    }
     const uint16_t originPayloadLength = strlen(originPayload);
 
     const uint16_t topicLength =
@@ -517,4 +642,124 @@ void HAMqtt::setState(ConnectionState state)
     if (_stateChangedCallback) {
         _stateChangedCallback(_currentState);
     }
+}
+
+bool HAMqtt::enqueueDeferredPublish(
+    const char* topic,
+    const uint8_t* payload,
+    uint16_t length,
+    bool retained
+)
+{
+    if (!topic || _deferredCount >= DeferredQueueCapacity) {
+        return false;
+    }
+
+    if (length > 0 && payload == nullptr) {
+        return false;
+    }
+
+    const uint8_t slot = static_cast<uint8_t>((_deferredHead + _deferredCount) % DeferredQueueCapacity);
+    DeferredPublishMessage& msg = _deferredQueue[slot];
+
+    const size_t topicLen = strlen(topic);
+    msg.topic = new char[topicLen + 1];
+    memcpy(msg.topic, topic, topicLen + 1);
+
+    if (length > 0) {
+        msg.payload = new uint8_t[length];
+        memcpy(msg.payload, payload, length);
+    } else {
+        msg.payload = nullptr;
+    }
+
+    msg.length = length;
+    msg.retained = retained;
+    _deferredCount++;
+
+#ifdef ARDUINOHA_TEST
+    _deferredPublishEnqueueCountForTest++;
+#endif
+
+    return true;
+}
+
+void HAMqtt::clearDeferredMessage(DeferredPublishMessage& msg)
+{
+    delete[] msg.topic;
+    delete[] msg.payload;
+    msg.topic = nullptr;
+    msg.payload = nullptr;
+    msg.length = 0;
+    msg.retained = false;
+}
+
+void HAMqtt::clearDeferredQueue()
+{
+    while (_deferredCount > 0) {
+        DeferredPublishMessage& msg = _deferredQueue[_deferredHead];
+        clearDeferredMessage(msg);
+        _deferredHead = static_cast<uint8_t>((_deferredHead + 1) % DeferredQueueCapacity);
+        _deferredCount--;
+    }
+
+    _deferredHead = 0;
+}
+
+void HAMqtt::clearDeferredBuilder()
+{
+    delete[] _deferredBuilder.topic;
+    delete[] _deferredBuilder.payload;
+    _deferredBuilder.topic = nullptr;
+    _deferredBuilder.payload = nullptr;
+    _deferredBuilder.expectedLength = 0;
+    _deferredBuilder.writtenLength = 0;
+    _deferredBuilder.retained = false;
+    _deferredBuilder.active = false;
+    _deferredBuilder.valid = false;
+}
+
+bool HAMqtt::flushDeferredPublishes()
+{
+    while (_deferredCount > 0) {
+        DeferredPublishMessage& msg = _deferredQueue[_deferredHead];
+
+        if (!isConnected()) {
+#ifdef ARDUINOHA_TEST
+            _deferredFlushFailedForTest = true;
+            _lastDeferredFlushErrorForTest = DeferredFlushErrorNotConnected;
+#endif
+            return false;
+        }
+
+        if (!_mqtt->beginPublish(msg.topic, msg.length, msg.retained)) {
+#ifdef ARDUINOHA_TEST
+            _deferredFlushFailedForTest = true;
+            _lastDeferredFlushErrorForTest = DeferredFlushErrorBeginPublish;
+#endif
+            return false;
+        }
+
+        if (msg.length > 0 && msg.payload != nullptr) {
+            _mqtt->write(msg.payload, msg.length);
+        }
+
+        if (!_mqtt->endPublish()) {
+#ifdef ARDUINOHA_TEST
+            _deferredFlushFailedForTest = true;
+            _lastDeferredFlushErrorForTest = DeferredFlushErrorEndPublish;
+#endif
+            return false;
+        }
+
+        clearDeferredMessage(msg);
+        _deferredHead = static_cast<uint8_t>((_deferredHead + 1) % DeferredQueueCapacity);
+        _deferredCount--;
+    }
+
+#ifdef ARDUINOHA_TEST
+    _deferredFlushFailedForTest = false;
+    _lastDeferredFlushErrorForTest = DeferredFlushErrorNone;
+#endif
+    return true;
 }

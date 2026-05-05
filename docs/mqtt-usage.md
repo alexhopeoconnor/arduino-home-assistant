@@ -46,11 +46,69 @@ mqtt.publish("customTopic", "payload", true);     // retained
 
 ```cpp
 device.enableSharedAvailability();
+device.setPayloadAvailable("up");
+device.setPayloadNotAvailable("down");
 device.enableLastWill();   // broker publishes offline when TCP drops
 // device.setAvailability(false);  // optional: start as offline
 ```
 
 **Per-entity availability:** call `someEntity.setAvailability(true/false)` on each type. Does not use LWT the same way as shared mode; see examples under `examples/availability/`.
+
+Custom per-entity payloads are supported:
+
+```cpp
+sensor.setPayloadAvailable("ready");
+sensor.setPayloadNotAvailable("lost");
+```
+
+For multi-topic availability discovery, add full MQTT topics and a mode:
+
+```cpp
+sensor.setAvailabilityMode("all");
+sensor.addAvailabilityEntry("bridge/status");
+sensor.addAvailabilityEntry("sensor/status", "{{ value_json.state }}");
+```
+
+## Discovery helpers by entity
+
+Common entity discovery metadata is available on most entity classes:
+
+```cpp
+entity.setEnabledByDefault(false);
+entity.setEntityPicture("https://example.com/entity.png");
+entity.setQos(1);
+entity.setEncoding("utf-8");
+entity.setEntityCategory("diagnostic");
+```
+
+Read-only sensor presentation/template helpers:
+
+```cpp
+sensor.setSuggestedDisplayPrecision(2);
+sensor.setValueTemplate("{{ value_json.temperature }}");
+sensor.setJsonAttributesTemplate("{{ value_json.attrs | tojson }}");
+sensor.setLastResetValueTemplate("{{ value_json.last_reset }}");
+sensor.setDeviceClass("enum");
+sensor.setOptions("idle;charging;discharging;fault");
+```
+
+Writable entity template/payload helpers:
+
+```cpp
+mySwitch.setPayloadOn("ENABLE");
+mySwitch.setPayloadOff("DISABLE");
+mySwitch.setStateOn("running");
+mySwitch.setStateOff("stopped");
+mySwitch.setValueTemplate("{{ value_json.state }}");
+mySwitch.setCommandTemplate("{{ value_json.command }}");
+
+myNumber.setPayloadReset("RESET");
+myNumber.setCommandTemplate("{{ value | float | round(1) }}");
+
+mySelect.setCommandTemplate("{{ value_json.choice }}");
+myText.setCommandTemplate("{{ value_json.text }}");
+myButton.setPayloadPress("PRESS");
+```
 
 ## Compiler macros
 

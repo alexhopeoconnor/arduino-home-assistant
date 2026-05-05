@@ -19,6 +19,7 @@ static TestCase tests[] = {
     TEST_ENTRY(test_BinarySensorTest_publish_initial_state),
     TEST_ENTRY(test_BinarySensorTest_publish_state_debounce),
     TEST_ENTRY(test_BinarySensorTest_publish_state_debounce_skip),
+    TEST_ENTRY(test_BinarySensorTest_disconnected_state_updates_local_shadow),
     TEST_ENTRY(test_BinarySensorTest_publish_state_off),
     TEST_ENTRY(test_BinarySensorTest_publish_state_on),
     TEST_ENTRY(test_ButtonTest_availability),
@@ -57,6 +58,7 @@ static TestCase tests[] = {
     TEST_ENTRY(test_SensorNumberTest_publish_p3_zero_signed),
     TEST_ENTRY(test_SensorNumberTest_publish_p3_zero_unsigned),
     TEST_ENTRY(test_SensorNumberTest_publish_precision_mismatch),
+    TEST_ENTRY(test_SensorNumberTest_disconnected_value_updates_local_shadow),
     TEST_ENTRY(test_SensorNumberTest_publish_uint16),
     TEST_ENTRY(test_SensorNumberTest_publish_uint32),
     TEST_ENTRY(test_SensorNumberTest_publish_uint8),
@@ -85,7 +87,7 @@ static TestCase tests[] = {
     TEST_ENTRY(test_SwitchTest_command_off),
     TEST_ENTRY(test_SwitchTest_command_on),
     TEST_ENTRY(test_SwitchTest_command_subscription),
-    TEST_ENTRY(test_SwitchTest_callback_publish_attempt_is_rejected),
+    TEST_ENTRY(test_SwitchTest_callback_publish_is_deferred_until_after_dispatch),
     TEST_ENTRY(test_SwitchTest_current_state_setter),
     TEST_ENTRY(test_SwitchTest_default_entity_id_setter),
     TEST_ENTRY(test_SwitchTest_default_params),
@@ -121,7 +123,7 @@ static TestCase tests[] = {
     TEST_ENTRY(test_TextTest_publish_nothing_if_retained),
     TEST_ENTRY(test_TextTest_publish_state),
     TEST_ENTRY(test_TextTest_publish_state_debounce),
-    TEST_ENTRY(test_TextTest_callback_publish_attempt_is_rejected),
+    TEST_ENTRY(test_TextTest_callback_publish_is_deferred_until_after_dispatch),
     TEST_ENTRY(test_TextTest_retain_setter),
 };
 

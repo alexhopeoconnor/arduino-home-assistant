@@ -29,12 +29,13 @@ bool HACover::setState(const CoverState state, const bool force)
         return true;
     }
 
-    if (publishState(state)) {
-        _currentState = state;
-        return true;
+    if (state == StateUnknown) {
+        return false;
     }
 
-    return false;
+    const bool published = publishState(state);
+    _currentState = state;
+    return published;
 }
 
 bool HACover::setPosition(const int16_t position, const bool force)
@@ -43,12 +44,13 @@ bool HACover::setPosition(const int16_t position, const bool force)
         return true;
     }
 
-    if (publishPosition(position)) {
-        _currentPosition = position;
-        return true;
+    if (position == DefaultPosition || !(_features & PositionFeature)) {
+        return false;
     }
 
-    return false;
+    const bool published = publishPosition(position);
+    _currentPosition = position;
+    return published;
 }
 
 void HACover::buildSerializer()
@@ -57,10 +59,11 @@ void HACover::buildSerializer()
         return;
     }
 
-    _serializer = new HASerializer(this, 13); // 13 - max properties nb
+    _serializer = new HASerializer(this, 22);
     _serializer->set(AHATOFSTR(HANameProperty), _name);
     setEntityIdProperty(_serializer);
     _serializer->set(HASerializer::WithUniqueId);
+    applyCommonEntityProperties(_serializer);
     _serializer->set(AHATOFSTR(HADeviceClassProperty), _class);
     _serializer->set(AHATOFSTR(HAStateEntityCategory), nonEmptyString(_entityCategory));
     _serializer->set(AHATOFSTR(HAIconProperty), _icon);
@@ -97,7 +100,7 @@ HASerializer* HACover::buildDeviceDiscoverySerializer()
         return nullptr;
     }
 
-    HASerializer* serializer = new HASerializer(this, 13);
+    HASerializer* serializer = new HASerializer(this, 22);
     serializer->set(
         AHATOFSTR(HAPlatformProperty),
         AHATOFSTR(HAComponentCover),
@@ -106,6 +109,7 @@ HASerializer* HACover::buildDeviceDiscoverySerializer()
     serializer->set(AHATOFSTR(HANameProperty), _name);
     setEntityIdProperty(serializer);
     serializer->set(HASerializer::WithUniqueId);
+    applyCommonEntityProperties(serializer);
     serializer->set(AHATOFSTR(HADeviceClassProperty), _class);
     serializer->set(AHATOFSTR(HAStateEntityCategory), nonEmptyString(_entityCategory));
     serializer->set(AHATOFSTR(HAIconProperty), _icon);

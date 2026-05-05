@@ -2,6 +2,7 @@
 #ifndef EX_ARDUINOHA_TEXT
 
 #include "../HAMqtt.h"
+#include "../utils/HADictionary.h"
 #include "../utils/HASerializer.h"
 
 HAText::HAText(const char* uniqueId) :
@@ -13,6 +14,8 @@ HAText::HAText(const char* uniqueId) :
     _minValue(),
     _maxValue(),
     _pattern(nullptr),
+    _valueTemplate(nullptr),
+    _commandTemplate(nullptr),
     _currentState(nullptr),
     _commandCallback(nullptr)
 #if defined(ARDUINOHA_ENABLE_STDFUNCTION)
@@ -20,6 +23,16 @@ HAText::HAText(const char* uniqueId) :
 #endif
 {
 
+}
+
+void HAText::setValueTemplate(const char* valueTemplate)
+{
+    _valueTemplate = valueTemplate;
+}
+
+void HAText::setCommandTemplate(const char* commandTemplate)
+{
+    _commandTemplate = commandTemplate;
 }
 
 bool HAText::setState(const char* state, const bool force)
@@ -36,12 +49,9 @@ bool HAText::setState(const char* state, const bool force)
         return true;
     }
 
-    if (publishState(state)) {
-        _currentState = state;
-        return true;
-    }
-
-    return false;
+    const bool published = publishState(state);
+    _currentState = state;
+    return published;
 }
 
 void HAText::buildSerializer()
@@ -50,10 +60,11 @@ void HAText::buildSerializer()
         return;
     }
 
-    _serializer = new HASerializer(this, 15); // 15 - max properties nb
+    _serializer = new HASerializer(this, 22);
     _serializer->set(AHATOFSTR(HANameProperty), _name);
     setEntityIdProperty(_serializer);
     _serializer->set(HASerializer::WithUniqueId);
+    applyCommonEntityProperties(_serializer);
     _serializer->set(AHATOFSTR(HAStateEntityCategory), nonEmptyString(_entityCategory));
     _serializer->set(AHATOFSTR(HAIconProperty), _icon);
     _serializer->set(
@@ -62,6 +73,14 @@ void HAText::buildSerializer()
         HASerializer::ProgmemPropertyValue
     );
     _serializer->set(AHATOFSTR(HAPatternProperty), _pattern);
+
+    if (nonEmptyString(_valueTemplate)) {
+        _serializer->set(AHATOFSTR(HAValueTemplateProperty), _valueTemplate);
+    }
+
+    if (nonEmptyString(_commandTemplate)) {
+        _serializer->set(AHATOFSTR(HACommandTemplateProperty), _commandTemplate);
+    }
 
     if (_minValue.isSet()) {
         _serializer->set(
@@ -107,7 +126,7 @@ HASerializer* HAText::buildDeviceDiscoverySerializer()
         return nullptr;
     }
 
-    HASerializer* serializer = new HASerializer(this, 15);
+    HASerializer* serializer = new HASerializer(this, 22);
     serializer->set(
         AHATOFSTR(HAPlatformProperty),
         AHATOFSTR(HAComponentText),
@@ -116,6 +135,7 @@ HASerializer* HAText::buildDeviceDiscoverySerializer()
     serializer->set(AHATOFSTR(HANameProperty), _name);
     setEntityIdProperty(serializer);
     serializer->set(HASerializer::WithUniqueId);
+    applyCommonEntityProperties(serializer);
     serializer->set(AHATOFSTR(HAStateEntityCategory), nonEmptyString(_entityCategory));
     serializer->set(AHATOFSTR(HAIconProperty), _icon);
     serializer->set(
@@ -124,6 +144,14 @@ HASerializer* HAText::buildDeviceDiscoverySerializer()
         HASerializer::ProgmemPropertyValue
     );
     serializer->set(AHATOFSTR(HAPatternProperty), _pattern);
+
+    if (nonEmptyString(_valueTemplate)) {
+        serializer->set(AHATOFSTR(HAValueTemplateProperty), _valueTemplate);
+    }
+
+    if (nonEmptyString(_commandTemplate)) {
+        serializer->set(AHATOFSTR(HACommandTemplateProperty), _commandTemplate);
+    }
 
     if (_minValue.isSet()) {
         serializer->set(
