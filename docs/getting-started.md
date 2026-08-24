@@ -6,16 +6,20 @@ ArduinoHA talks to Home Assistant over **MQTT** (TCP). You need an MQTT broker r
 
 ## Install the library
 
-**Arduino IDE:** Library Manager → search for `home-assistant-integration` → Install.
-
-**PlatformIO:** add the dependency in `platformio.ini` (see the project [`library.json`](../library.json) for PubSubClient):
+**PlatformIO (recommended):** add the maintained release tag in
+`platformio.ini`. Its [`library.json`](../library.json) resolves PubSubClient:
 
 ```ini
 lib_deps =
-    https://github.com/alexhopeoconnor/arduino-home-assistant.git
+    home-assistant-integration=https://github.com/alexhopeoconnor/arduino-home-assistant.git#v3.0.0
 ```
 
-You also need a network `Client` (Ethernet or Wi‑Fi) compatible with the Arduino networking API.
+**Arduino IDE:** this fork is not indexed by Library Manager. Download the
+source archive for a release, extract it, move the extracted library directory
+to `<sketchbook>/libraries/home-assistant-integration`, and restart the IDE.
+
+You also need a network `Client` (Ethernet or Wi-Fi) compatible with the
+Arduino networking API.
 
 ## Minimal layout
 

@@ -4,21 +4,54 @@
 [![](https://img.shields.io/badge/Documentation-40BC13)](https://github.com/alexhopeoconnor/arduino-home-assistant/blob/main/docs/README.md)
 [![](https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&color=%23fe8e86)](https://github.com/sponsors/dawidchyrzynski)
 
-ArduinoHA allows to integrate an Arduino/ESP based device with Home Assistant using MQTT.
-The library is designed to use as low resources (RAM/flash) as possible.
-Initially, it was optimized to work on Arduino Uno with Ethernet Shield,
-but I successfully use it on ESP8266/ESP8255 boards in my projects.
+ArduinoHA integrates Arduino- and ESP-based devices with Home Assistant over MQTT.
+It is designed to keep RAM and flash use low. The original project targeted the
+Arduino Uno with an Ethernet Shield; this maintained fork is continuously tested
+on ESP8266 and ESP32 release targets.
 
-## PlatformIO
+## Install
 
-[`library.json`](library.json) declares the **PubSubClient** dependency for Library Manager / LDF. Example:
+### PlatformIO
+
+[`library.json`](library.json) declares the **PubSubClient** dependency. Pin the
+maintained release tag in an application:
 
 ```ini
 lib_deps =
-    https://github.com/alexhopeoconnor/arduino-home-assistant.git
+    home-assistant-integration=https://github.com/alexhopeoconnor/arduino-home-assistant.git#v3.0.0
 ```
 
-(`library.properties` remains the source of truth for the Arduino IDE 1.x/2.x library manager name **home-assistant-integration**.)
+The suffix after `#` is a Git ref. PlatformIO clones this repository and checks
+out that tag; it does not download a GitHub Release asset.
+
+### Arduino IDE
+
+This maintained fork is not published through the Arduino Library Manager.
+Download the source archive for a release, extract it, move the extracted library
+directory to `<sketchbook>/libraries/home-assistant-integration`, then restart the IDE.
+[`library.properties`](library.properties) provides the local library name and
+metadata expected by the Arduino IDE.
+
+## Tests and releases
+
+CI compile-checks the PlatformIO Unity suite for the ESP8266 and ESP32 without
+a board:
+
+```bash
+pio test -e esp8266 --without-uploading --without-testing
+pio test -e esp32 --without-uploading --without-testing
+```
+
+Before publishing a version, update `library.json`, `library.properties`,
+`CHANGELOG.md`, and the relevant documentation. Validate and create the
+annotated tag with:
+
+```bash
+./scripts/prepare-release.sh vMAJOR.MINOR.PATCH --tag
+```
+
+Push the branch and tag. The tag workflow validates the PlatformIO package
+again and creates the GitHub Release.
 
 ## Features
 
@@ -117,30 +150,11 @@ Recent discovery additions include:
 |[Arduino Nano 33 IoT](examples/nano33iot/nano33iot.ino)|Basic example for Arduino Nano 33 IoT (SAMD family).|
 |[mDNS discovery](examples/mdns/mdns.ino)|Make your ESP8266 discoverable via the mDNS.|
 
-## Compatible hardware
+## Supported and compatible hardware
 
-The library uses the Arduino Ethernet Client API for interacting with the network hardware.
-It should work fine as long as the `Client` class is available.
-
-Here is the list of devices on which the library was tested:
-
-* Arduino Uno
-* Arduino Mega
-* Arduino Nano
-* Arduino Pro Mini
-* Arduino Nano 33 IoT
-* Arduino Due
-* NodeMCU
-* Controllino Mega (Pure)
-* Controllino Maxi (Pure)
-* ESP-01
-* ESP32-CAM
-* Sonoff Dual R2
-* Sonoff Dual R3
-* Sonoff Basic
-* Sonoff Mini
-* Tuya Wi-Fi switch module
-* Tuya Wi-Fi curtain module
-
-Please note that it's not the complete list of supported devices.
-You may try to use the library on any device that uses Arduino core.
+ArduinoHA is designed around Arduino's network `Client` API and can be used
+with Ethernet or Wi-Fi clients that implement it. This fork's automated
+PlatformIO coverage is ESP8266 (Wemos D1 mini) and ESP32 (ESP32 DevKit).
+Other Arduino targets may work, but they are compatibility targets rather than
+a tested release guarantee; validate the compiler, network client, memory
+budget, and Home Assistant discovery behavior in the consuming project.
