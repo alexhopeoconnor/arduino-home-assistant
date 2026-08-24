@@ -582,6 +582,10 @@ void HABaseDeviceType::configureAvailabilityEntries(HASerializer* serializer) co
 
     if (useList) {
         auto* entry = serializer->addEntry();
+        if (!entry) {
+            return;
+        }
+
         entry->type = HASerializer::AvailabilityArrayEntryType;
         entry->subtype = 0;
         entry->property = AHATOFSTR(HAAvailabilityListProperty);
@@ -590,6 +594,10 @@ void HABaseDeviceType::configureAvailabilityEntries(HASerializer* serializer) co
     }
 
     auto* e = serializer->addEntry();
+    if (!e) {
+        return;
+    }
+
     e->type = HASerializer::TopicEntryType;
     e->subtype = 0;
     e->property = AHATOFSTR(HAAvailabilityTopic);

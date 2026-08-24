@@ -34,7 +34,7 @@ HASensor::~HASensor()
 
         if (optionsNb > 1) {
             for (uint8_t i = 0; i < optionsNb; i++) {
-                delete options[i];
+                delete[] options[i];
             }
         }
 

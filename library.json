@@ -1,7 +1,7 @@
 {
   "name": "home-assistant-integration",
-  "version": "2.1.0",
-  "description": "Home Assistant MQTT integration for Arduino (ArduinoHA): discovery, entities, and low resource use.",
+  "version": "3.0.0",
+  "description": "Maintained Home Assistant MQTT discovery and entity integration for Arduino and ESP devices.",
   "keywords": [
     "mqtt",
     "home-assistant",
@@ -30,12 +30,9 @@
     "url": "https://github.com/alexhopeoconnor/arduino-home-assistant.git"
   },
   "frameworks": "arduino",
-  "dependencies": [
-    {
-      "name": "knolleary/PubSubClient",
-      "version": "^2.8.0"
-    }
-  ],
+  "dependencies": {
+    "knolleary/PubSubClient": "2.8.0"
+  },
   "export": {
     "include": [
       "src",
@@ -47,5 +44,6 @@
       "LICENSE",
       "CHANGELOG.md"
     ]
-  }
+  },
+  "$schema": "https://raw.githubusercontent.com/platformio/platformio-core/develop/platformio/assets/schema/library.json"
 }

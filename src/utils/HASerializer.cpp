@@ -6,6 +6,7 @@
 #endif
 
 #include "HASerializer.h"
+#include <new>
 #include "../ArduinoHADefines.h"
 #include "../HADevice.h"
 #include "../HAMqtt.h"
@@ -182,6 +183,10 @@ void HASerializer::set(
     }
 
     SerializerEntry* entry = addEntry();
+    if (!entry) {
+        return;
+    }
+
     entry->type = PropertyEntryType;
     entry->subtype = static_cast<uint8_t>(valueType);
     entry->property = property;
@@ -192,6 +197,10 @@ void HASerializer::set(const FlagType flag)
 {
     if (flag == WithDevice || flag == WithUniqueId) {
         SerializerEntry* entry = addEntry();
+        if (!entry) {
+            return;
+        }
+
         entry->type = FlagEntryType;
         entry->subtype = static_cast<uint8_t>(flag);
         entry->property = nullptr;
@@ -210,13 +219,42 @@ void HASerializer::topic(const __FlashStringHelper* topic)
     }
 
     SerializerEntry* entry = addEntry();
+    if (!entry) {
+        return;
+    }
+
     entry->type = TopicEntryType;
     entry->property = topic;
 }
 
 HASerializer::SerializerEntry* HASerializer::addEntry()
 {
-    return &_entries[_entriesNb++]; // intentional lack of protection against overflow
+    if (_entriesNb >= _maxEntriesNb) {
+        if (_maxEntriesNb == UINT8_MAX) {
+            return nullptr;
+        }
+
+        uint16_t expandedCapacity = _maxEntriesNb == 0 ? 4 : _maxEntriesNb * 2;
+        if (expandedCapacity > UINT8_MAX) {
+            expandedCapacity = UINT8_MAX;
+        }
+
+        SerializerEntry* expandedEntries =
+            new (std::nothrow) SerializerEntry[expandedCapacity];
+        if (!expandedEntries) {
+            return nullptr;
+        }
+
+        for (uint8_t i = 0; i < _entriesNb; i++) {
+            expandedEntries[i] = _entries[i];
+        }
+
+        delete[] _entries;
+        _entries = expandedEntries;
+        _maxEntriesNb = static_cast<uint8_t>(expandedCapacity);
+    }
+
+    return &_entries[_entriesNb++];
 }
 
 uint16_t HASerializer::calculateSize() const

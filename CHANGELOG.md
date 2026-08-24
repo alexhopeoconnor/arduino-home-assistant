@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.0.0
+
+- Establish this maintained fork as the canonical ArduinoHA dependency for DeviceFramework.
+- Prevent discovery serialization from writing past its entry allocation.
+- Correct array deallocation in affected entity types.
+
+# Changelog
+
 ## Unreleased
 
 **New features:**
