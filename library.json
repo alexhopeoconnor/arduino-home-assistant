@@ -37,7 +37,6 @@
     "include": [
       "src",
       "examples",
-      "docs",
       "library.properties",
       "library.json",
       "README.md",
