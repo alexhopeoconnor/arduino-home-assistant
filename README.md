@@ -67,6 +67,8 @@ The [documentation map](docs/README.md) is the starting point:
 ## Development and releases
 
 ```bash
+./scripts/bump-version.sh vMAJOR.MINOR.PATCH
+# Replace the generated CHANGELOG TODO with the release summary.
 ./scripts/test.sh compile --platform esp8266
 ./scripts/test.sh compile --platform esp32
 ./scripts/check-docs.sh
