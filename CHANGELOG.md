@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.0.2
+
+- Align the Arduino IDE `library.properties` version with `library.json` so both package formats identify the same release.
+
 ## 3.0.1
 
 - Build and test against the Arduino 3-compatible pioarduino ESP32 platform.
