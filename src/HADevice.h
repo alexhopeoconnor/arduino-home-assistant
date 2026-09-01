@@ -41,6 +41,11 @@ public:
      */
     ~HADevice();
 
+    HADevice(const HADevice&) = delete;
+    HADevice& operator=(const HADevice&) = delete;
+    HADevice(HADevice&&) = delete;
+    HADevice& operator=(HADevice&&) = delete;
+
     /**
      * Returns pointer to the unique ID. It can be nullptr if the device has no ID assigned.
      */
@@ -147,9 +152,15 @@ public:
 
     /**
      * Sets the `connections` array as raw JSON (e.g. [[\"mac\",\"aa:bb:cc:dd:ee:ff\"]]).
-     * The payload is copied into an internal buffer.
+     *
+     * This legacy escape hatch accepts only a complete JSON array of two-string
+     * connection tuples and rejects an oversized or malformed value rather than
+     * truncating a retained discovery document. Prefer addConnection().
+     *
+     * @returns false when the value is malformed or does not fit in the
+     * internal discovery buffer.
      */
-    void setConnectionsJson(const char* connectionsJson);
+    bool setConnectionsJson(const char* connectionsJson);
 
     void setPayloadAvailable(const char* payload);
     void setPayloadNotAvailable(const char* payload);

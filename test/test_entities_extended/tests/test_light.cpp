@@ -429,7 +429,6 @@ void test_LightTest_object_id_setter(void) {
         light,
         (
             "{"
-            "\"obj_id\":\"testId\","
             "\"uniq_id\":\"uniqueLight\","
             "\"dev\":{\"ids\":\"testDevice\"},"
             "\"stat_t\":\"testData/testDevice/uniqueLight/stat_t\","

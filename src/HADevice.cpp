@@ -3,44 +3,135 @@
 #include "HAMqtt.h"
 #include "utils/HAUtils.h"
 #include "utils/HADictionary.h"
+#include "utils/HAJson.h"
 #include "utils/HASerializer.h"
 #include <string.h>
 
 static bool appendEscapedJsonString(char*& cursor, char* end, const char* value)
 {
-    if (!cursor || !value || cursor >= end) {
-        return false;
-    }
-
-    if (cursor + 1 >= end) {
-        return false;
-    }
-
-    *cursor++ = '"';
-    for (const char* p = value; *p != '\0'; p++) {
-        if ((*p == '"' || *p == '\\') && cursor + 2 >= end) {
-            return false;
-        }
-
-        if (*p == '"' || *p == '\\') {
-            *cursor++ = '\\';
-        }
-
-        if (cursor + 1 >= end) {
-            return false;
-        }
-
-        *cursor++ = *p;
-    }
-
-    if (cursor + 1 >= end) {
-        return false;
-    }
-
-    *cursor++ = '"';
-    *cursor = 0;
-    return true;
+    return HAJson::appendEscapedString(cursor, end, value);
 }
+
+namespace {
+void skipJsonWhitespace(const char*& cursor)
+{
+    while (*cursor == ' ' || *cursor == '\t' || *cursor == '\n' || *cursor == '\r') {
+        cursor++;
+    }
+}
+
+bool isHexDigit(const char value)
+{
+    return (value >= '0' && value <= '9') ||
+        (value >= 'a' && value <= 'f') ||
+        (value >= 'A' && value <= 'F');
+}
+
+bool parseJsonString(const char*& cursor)
+{
+    if (*cursor != '"') {
+        return false;
+    }
+
+    cursor++;
+    while (*cursor != '\0') {
+        const unsigned char value = static_cast<unsigned char>(*cursor++);
+        if (value == '"') {
+            return true;
+        }
+
+        if (value < 0x20) {
+            return false;
+        }
+
+        if (value != '\\') {
+            continue;
+        }
+
+        const char escape = *cursor++;
+        if (escape == '\0') {
+            return false;
+        }
+
+        if (escape == '"' || escape == '\\' || escape == '/' ||
+            escape == 'b' || escape == 'f' || escape == 'n' ||
+            escape == 'r' || escape == 't') {
+            continue;
+        }
+
+        if (escape != 'u') {
+            return false;
+        }
+
+        for (uint8_t i = 0; i < 4; i++) {
+            if (!isHexDigit(*cursor++)) {
+                return false;
+            }
+        }
+    }
+
+    return false;
+}
+
+bool isValidConnectionsJson(const char* value, const size_t maxLength)
+{
+    if (!value || value[0] == '\0' || strlen(value) >= maxLength) {
+        return false;
+    }
+
+    const char* cursor = value;
+    skipJsonWhitespace(cursor);
+    if (*cursor++ != '[') {
+        return false;
+    }
+
+    skipJsonWhitespace(cursor);
+    if (*cursor == ']') {
+        cursor++;
+        skipJsonWhitespace(cursor);
+        return *cursor == '\0';
+    }
+
+    while (true) {
+        if (*cursor++ != '[') {
+            return false;
+        }
+
+        skipJsonWhitespace(cursor);
+        if (!parseJsonString(cursor)) {
+            return false;
+        }
+
+        skipJsonWhitespace(cursor);
+        if (*cursor++ != ',') {
+            return false;
+        }
+
+        skipJsonWhitespace(cursor);
+        if (!parseJsonString(cursor)) {
+            return false;
+        }
+
+        skipJsonWhitespace(cursor);
+        if (*cursor++ != ']') {
+            return false;
+        }
+
+        skipJsonWhitespace(cursor);
+        if (*cursor == ']') {
+            cursor++;
+            skipJsonWhitespace(cursor);
+            return *cursor == '\0';
+        }
+
+        if (*cursor++ != ',') {
+            return false;
+        }
+
+        skipJsonWhitespace(cursor);
+    }
+}
+} // namespace
 
 #define HADEVICE_INIT \
     _ownsUniqueId(false), \
@@ -250,14 +341,13 @@ bool HADevice::addConnection(const char* type, const char* value)
     return true;
 }
 
-void HADevice::setConnectionsJson(const char* connectionsJson)
+bool HADevice::setConnectionsJson(const char* connectionsJson)
 {
-    if (!connectionsJson || connectionsJson[0] == '\0') {
-        return;
+    if (!isValidConnectionsJson(connectionsJson, MaxConnectionsJsonLength)) {
+        return false;
     }
 
-    strncpy(_connectionsJson, connectionsJson, MaxConnectionsJsonLength - 1);
-    _connectionsJson[MaxConnectionsJsonLength - 1] = 0;
+    strcpy(_connectionsJson, connectionsJson);
     _hasConnections = true;
 
     if (!_connectionsPropertyRegistered) {
@@ -268,6 +358,8 @@ void HADevice::setConnectionsJson(const char* connectionsJson)
         );
         _connectionsPropertyRegistered = true;
     }
+
+    return true;
 }
 
 void HADevice::setPayloadAvailable(const char* payload)

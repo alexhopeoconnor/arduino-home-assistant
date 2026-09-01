@@ -135,5 +135,9 @@ extern void test_TextTest_publish_state(void);
 extern void test_TextTest_publish_state_debounce(void);
 extern void test_TextTest_retain_setter(void);
 extern void test_TextTest_callback_publish_is_deferred_until_after_dispatch(void);
+extern void test_TextTest_current_state_is_owned(void);
+extern void test_TextTest_oversized_state_is_rejected(void);
+extern void test_TextTest_callback_state_is_owned_after_dispatch(void);
+extern void test_TextTest_oversized_command_is_ignored(void);
 
 #endif

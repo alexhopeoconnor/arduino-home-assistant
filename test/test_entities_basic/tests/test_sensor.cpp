@@ -100,7 +100,6 @@ void test_SensorTest_object_id_setter(void) {
         sensor,
         (
             "{"
-            "\"obj_id\":\"testId\","
             "\"uniq_id\":\"uniqueSensor\","
             "\"dev\":{\"ids\":\"testDevice\"},"
             "\"stat_t\":\"testData/testDevice/uniqueSensor/stat_t\""

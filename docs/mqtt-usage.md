@@ -114,6 +114,11 @@ myButton.setPayloadPress("PRESS");
 
 Defined in `ArduinoHADefines.h` or via build flags.
 
+- **`ARDUINOHA_DISABLE_STDFUNCTION`** — disables the default capturing-lambda and
+  `std::bind` overloads on entity command APIs. Use it on targets without a complete
+  `std::function` implementation or where code size/RAM matters (constrained AVR
+  builds are the usual case). ESP8266/ESP32 support the overloads. `HAMqtt`
+  lifecycle callbacks remain ordinary function pointers.
 - **`ARDUINOHA_DEBUG`** — enables ArduinoHA logging by default and sets the initial maximum verbosity to `Debug`. Without this flag, structured logs are compiled in but remain disabled until you call `arduinoHASetLogEnabled(true)`.
 
 Structured logging is available through:

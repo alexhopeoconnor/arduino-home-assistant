@@ -2,6 +2,7 @@
 #ifdef ARDUINOHA_TEST
 
 #include "../ArduinoHADefines.h"
+#include <stdlib.h>
 
 PubSubClientMock::PubSubClientMock() :
     _pendingMessage(nullptr),
@@ -156,12 +157,25 @@ bool PubSubClientMock::beginPublish(
 
 size_t PubSubClientMock::write(const uint8_t *buffer, size_t size)
 {
-    if (!_pendingMessage || !_pendingMessage->buffer) {
+    if (!_pendingMessage || !_pendingMessage->buffer || !buffer) {
         return 0;
     }
 
-    strncat(_pendingMessage->buffer, (const char*)buffer, size);
-    return size;
+    const size_t capacity = _pendingMessage->bufferSize - 1;
+    if (_pendingMessage->writtenSize >= capacity) {
+        return 0;
+    }
+
+    const size_t available = capacity - _pendingMessage->writtenSize;
+    const size_t written = size < available ? size : available;
+    if (written == 0) {
+        return 0;
+    }
+
+    memcpy(_pendingMessage->buffer + _pendingMessage->writtenSize, buffer, written);
+    _pendingMessage->writtenSize += written;
+    _pendingMessage->buffer[_pendingMessage->writtenSize] = 0;
+    return written;
 }
 
 size_t PubSubClientMock::print(const __FlashStringHelper* buffer)
@@ -184,35 +198,46 @@ int PubSubClientMock::endPublish()
         return 0;
     }
 
-    size_t messageSize = _pendingMessage->bufferSize;
-    uint8_t index = _flushedMessagesNb;
+    if (_pendingMessage->writtenSize != _pendingMessage->bufferSize - 1 ||
+        _flushedMessagesNb == UINT8_MAX) {
+        return 0;
+    }
 
-    _flushedMessagesNb++;
-    _flushedMessages = static_cast<MqttMessage**>(
-        realloc(_flushedMessages, _flushedMessagesNb * sizeof(MqttMessage*))
+    MqttMessage** expanded = static_cast<MqttMessage**>(
+        realloc(_flushedMessages, (_flushedMessagesNb + 1) * sizeof(MqttMessage*))
     );
+    if (!expanded) {
+        return 0;
+    }
 
-    _flushedMessages[index] = _pendingMessage; // handover memory responsibility
+    _flushedMessages = expanded;
+    _flushedMessages[_flushedMessagesNb++] = _pendingMessage;
+
     _pendingMessage = nullptr; // do not call destructor
 
-    return messageSize;
+    return _flushedMessages[_flushedMessagesNb - 1]->bufferSize;
 }
 
 bool PubSubClientMock::subscribe(const char* topic)
 {
-    uint8_t index = _subscriptionsNb;
+    if (!topic || _subscriptionsNb == UINT8_MAX) {
+        return false;
+    }
 
-    _subscriptionsNb++;
-    _subscriptions = static_cast<MqttSubscription**>(
-        realloc(_subscriptions, _subscriptionsNb * sizeof(MqttSubscription*))
+    MqttSubscription** expanded = static_cast<MqttSubscription**>(
+        realloc(_subscriptions, (_subscriptionsNb + 1) * sizeof(MqttSubscription*))
     );
+    if (!expanded) {
+        return false;
+    }
 
     size_t topicSize = strlen(topic) + 1;
     MqttSubscription* subscription = new MqttSubscription();
     subscription->topic = new char[topicSize];
     memcpy(subscription->topic, topic, topicSize);
 
-    _subscriptions[index] = subscription;
+    _subscriptions = expanded;
+    _subscriptions[_subscriptionsNb++] = subscription;
     return true;
 }
 
@@ -223,7 +248,8 @@ void PubSubClientMock::clearFlushedMessages()
             delete _flushedMessages[i];
         }
 
-        delete _flushedMessages;
+        free(_flushedMessages);
+        _flushedMessages = nullptr;
     }
 
     _flushedMessagesNb = 0;
@@ -236,7 +262,8 @@ void PubSubClientMock::clearSubscriptions()
             delete _subscriptions[i];
         }
 
-        delete _subscriptions;
+        free(_subscriptions);
+        _subscriptions = nullptr;
     }
 
     _subscriptionsNb = 0;

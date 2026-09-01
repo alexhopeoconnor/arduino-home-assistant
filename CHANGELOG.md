@@ -1,8 +1,24 @@
 # Changelog
 
+## 3.1.0
+
+**Home Assistant MQTT compatibility:**
+
+- Add an explicit, retry-safe single-component to device-discovery migration sequence: retained `migrate_discovery` markers, device config, then legacy-topic cleanup.
+- Match Home Assistant device-component removal semantics with a platform-only tombstone followed by a compacted payload; `republishDiscovery()` re-adds a removed component.
+- Stop serializing removed `obj_id`; keep `setObjectId()` source-compatible and use `setDefaultEntityId()` for new entities.
+
+**Reliability and maintenance:**
+
+- Reject invalid discovery topic tokens, escape dynamic JSON values, and fail discovery publication on partial writes or missing device IDs.
+- Register entities safely regardless of whether they are constructed before or after `HAMqtt`, diagnose entity-limit drops, and make explicit disconnect callbacks observable.
+- Make `HAText` own its current state and bounded command copy; align device-discovery origin version with the package version.
+- Add native AddressSanitizer/UndefinedBehaviorSanitizer core regression coverage and release-script version consistency checks.
+
 ## 3.0.2
 
 - Align the Arduino IDE `library.properties` version with `library.json` so both package formats identify the same release.
+
 
 ## 3.0.1
 
@@ -31,8 +47,8 @@
 **Migration notes:**
 * Unit tests now live under `test/` as PlatformIO Unity suites (`pio test`). The legacy `tests/` tree (AUnit, EpoxyDuino, Make, AUniter) has been removed.
 * Home Assistant deprecated MQTT `object_id` in favor of `default_entity_id`, and newer Home Assistant versions may warn on or remove `object_id` handling in discovery payloads.
-* Existing code using `setObjectId()` remains supported as a legacy fallback, but new projects should migrate to `setDefaultEntityId()`.
-* If you enable device discovery mode, avoid publishing per-entity discovery topics manually. Use `republishDiscovery()` when a runtime config change needs to refresh discovery state.
+* `setObjectId()` remains source-compatible but no longer serializes the removed `obj_id` discovery property; new projects should use `setDefaultEntityId()`.
+* Existing single-component devices must use the staged migration API before device discovery; use `republishDiscovery()` when a runtime config change needs to refresh discovery state.
 
 ## 2.1.0
 

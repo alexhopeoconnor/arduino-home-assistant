@@ -26,7 +26,7 @@ The library does not currently implement alarm control panels, events, humidifie
 
 ## Common lifecycle
 
-Create `HADevice`, `HAMqtt`, then entities in that order; create them before `mqtt.begin(...)`. Call `mqtt.loop()` regularly. Read [Getting started](getting-started.md) for the connection flow and [device discovery](device-and-discovery.md) for discovery settings.
+Create long-lived `HADevice`, `HAMqtt`, and entity objects, then call `mqtt.begin(...)` once and `mqtt.loop()` regularly. Entities may be constructed before or after `HAMqtt`; both orders register safely. Read [Getting started](getting-started.md) for the connection flow and [device discovery](device-and-discovery.md) for discovery settings.
 
 For shared online/offline state, use `device.enableSharedAvailability()` and `device.enableLastWill()` before connecting. The [availability examples](../examples/availability/) show the simplest setup, while [advanced availability](../examples/advanced-availability/) covers custom payloads and Last Will behaviour.
 

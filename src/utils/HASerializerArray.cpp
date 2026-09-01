@@ -3,6 +3,7 @@
 
 #include "HASerializerArray.h"
 #include "HADictionary.h"
+#include "HAJson.h"
 
 HASerializerArray::HASerializerArray(const uint8_t size, const bool progmemItems) :
     _progmemItems(progmemItems),
@@ -39,24 +40,36 @@ const char* HASerializerArray::getItem(const uint8_t index) const
 
 uint16_t HASerializerArray::calculateSize() const
 {
-    uint16_t size =
+    uint32_t size =
         strlen_P(HASerializerJsonArrayPrefix) +
         strlen_P(HASerializerJsonArraySuffix);
 
     if (_itemsNb == 0) {
-        return size;
+        return static_cast<uint16_t>(size);
     }
 
     // separators between elements
     size += (_itemsNb - 1) * strlen_P(HASerializerJsonPropertiesSeparator);
 
     for (uint8_t i = 0; i < _itemsNb; i++) {
-        size +=
-            2 * strlen_P(HASerializerJsonEscapeChar)
-            + (_progmemItems ? strlen_P(_items[i]) : strlen(_items[i]));
+        if (!_items[i]) {
+            return 0;
+        }
+
+        const uint16_t itemSize = _progmemItems
+            ? HAJson::calculateEscapedProgmemStringSize(_items[i])
+            : HAJson::calculateEscapedStringSize(_items[i]);
+        if (itemSize == 0) {
+            return 0;
+        }
+
+        size += itemSize;
+        if (size > UINT16_MAX) {
+            return 0;
+        }
     }
 
-    return size;
+    return static_cast<uint16_t>(size);
 }
 
 bool HASerializerArray::serialize(char* output) const
@@ -65,26 +78,33 @@ bool HASerializerArray::serialize(char* output) const
         return false;
     }
 
-    strcat_P(output, HASerializerJsonArrayPrefix);
+    const uint16_t size = calculateSize();
+    if (size == 0) {
+        return false;
+    }
+
+    char* cursor = output;
+    char* const end = output + size;
+    *cursor++ = '[';
+    *cursor = 0;
 
     for (uint8_t i = 0; i < _itemsNb; i++) {
         if (i > 0) {
-            strcat_P(output, HASerializerJsonPropertiesSeparator);
+            *cursor++ = ',';
+            *cursor = 0;
         }
 
-        strcat_P(output, HASerializerJsonEscapeChar);
-
-        if (_progmemItems) {
-            strcat_P(output, _items[i]);
-        } else {
-            strcat(output, _items[i]);
+        const bool serialized = _progmemItems
+            ? HAJson::appendEscapedProgmemString(cursor, end, _items[i])
+            : HAJson::appendEscapedString(cursor, end, _items[i]);
+        if (!serialized) {
+            return false;
         }
-
-        strcat_P(output, HASerializerJsonEscapeChar);
     }
 
-    strcat_P(output, HASerializerJsonArraySuffix);
-    return true;
+    *cursor++ = ']';
+    *cursor = 0;
+    return static_cast<uint16_t>(cursor - output) == size;
 }
 
 void HASerializerArray::clear()

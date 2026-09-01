@@ -136,7 +136,7 @@ void test_FanTest_device_discovery_payload(void) {
         (
             "{"
             "\"dev\":{\"ids\":\"testDevice\"},"
-            "\"o\":{\"name\":\"ArduinoHA\",\"sw\":\"2.1.0\"},"
+            "\"o\":{\"name\":\"ArduinoHA\",\"sw\":\"3.0.2\"},"
             "\"cmps\":{"
                 "\"uniqueFan\":{"
                     "\"p\":\"fan\","
@@ -279,7 +279,6 @@ void test_FanTest_object_id_setter(void) {
         fan,
         (
             "{"
-            "\"obj_id\":\"testId\","
             "\"uniq_id\":\"uniqueFan\","
             "\"dev\":{\"ids\":\"testDevice\"},"
             "\"stat_t\":\"testData/testDevice/uniqueFan/stat_t\","

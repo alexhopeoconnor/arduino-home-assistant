@@ -1,6 +1,6 @@
 {
   "name": "home-assistant-integration",
-  "version": "3.0.2",
+  "version": "3.1.0",
   "description": "Maintained Home Assistant MQTT discovery and entity integration for Arduino and ESP devices.",
   "keywords": [
     "mqtt",
@@ -23,7 +23,7 @@
       "maintainer": true
     }
   ],
-  "license": "MIT",
+  "license": "AGPL-3.0",
   "homepage": "https://github.com/alexhopeoconnor/arduino-home-assistant",
   "repository": {
     "type": "git",

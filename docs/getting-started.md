@@ -11,7 +11,7 @@ ArduinoHA talks to Home Assistant over **MQTT** (TCP). You need an MQTT broker r
 
 ```ini
 lib_deps =
-    home-assistant-integration=https://github.com/alexhopeoconnor/arduino-home-assistant.git#v3.0.2
+    home-assistant-integration=https://github.com/alexhopeoconnor/arduino-home-assistant.git#v3.1.0
 ```
 
 **Arduino IDE:** this fork is not indexed by Library Manager. Download the
@@ -26,7 +26,7 @@ Arduino networking API.
 1. Create **`HADevice`** and **`HAMqtt`** once (global or inside a long-lived object).
 2. Call **`HAMqtt::begin(...)`** once, at the **end** of `setup()` — it only stores broker settings; the actual connection runs during **`HAMqtt::loop()`**.
 3. Call **`mqtt.loop()`** regularly in `loop()` (not necessarily every iteration).
-4. Construct **entity classes** (sensors, switches, …) **after** `HAMqtt`, and register them before `begin()` where the API requires it.
+4. Construct **entity classes** (sensors, switches, …) before or after `HAMqtt`; ArduinoHA registers both orders. Keep all objects alive for the whole MQTT lifetime and configure discovery before the first connection.
 
 ### Ethernet (example)
 
@@ -86,6 +86,10 @@ All are valid; pick one. Hostnames work instead of IP addresses.
 - `mqtt.begin("192.168.1.50", 8888)` — anonymous, custom port  
 - `mqtt.begin("192.168.1.50", "user", "pass")` — credentials, port 1883  
 - `mqtt.begin("192.168.1.50", 8888, "user", "pass")` — credentials + custom port  
+
+`begin()` is intentionally a one-time configuration call. Reconnects are owned by `mqtt.loop()`, which uses the configured reconnect interval. Do not call `begin()` in a reconnect timer. `mqtt.disconnect()` now also produces the registered disconnected and state-change callbacks, making an explicit shutdown observable in the same way as a transport loss.
+
+Use Home Assistant **2024.11.0 or newer** when opting into device discovery. See [Device & discovery](device-and-discovery.md) for the required staged migration from an existing single-component device.
 
 ## Security note
 

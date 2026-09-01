@@ -3,7 +3,7 @@
 [![](https://img.shields.io/github/v/release/alexhopeoconnor/arduino-home-assistant?label=Version)](https://github.com/alexhopeoconnor/arduino-home-assistant/releases)
 [![](https://img.shields.io/badge/Documentation-40BC13)](docs/README.md)
 
-ArduinoHA is the maintained MQTT-discovery library behind compact Arduino, ESP8266, and ESP32 integrations with Home Assistant. It uses Arduino's standard network `Client` API and is continuously compile-tested on ESP8266 and ESP32.
+ArduinoHA is the maintained MQTT-discovery library behind compact Arduino, ESP8266, and ESP32 integrations with Home Assistant. It uses Arduino's standard network `Client` API and is continuously compile-tested on ESP8266 and ESP32. Device discovery requires Home Assistant 2024.11.0 or newer; single-component discovery remains supported.
 
 ## Why use it
 
@@ -49,7 +49,7 @@ Read [Getting started](docs/getting-started.md) before copying this into product
 
 ```ini
 lib_deps =
-    home-assistant-integration=https://github.com/alexhopeoconnor/arduino-home-assistant.git#v3.0.2
+    home-assistant-integration=https://github.com/alexhopeoconnor/arduino-home-assistant.git#v3.1.0
 ```
 
 PlatformIO clones the Git repository and checks out the ref after `#`; that ref is a release tag, not a GitHub Release asset. Arduino IDE is supported through the included [`library.properties`](library.properties); see [Getting started](docs/getting-started.md#install-the-library).

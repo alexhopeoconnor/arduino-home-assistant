@@ -125,6 +125,10 @@ static TestCase tests[] = {
     TEST_ENTRY(test_TextTest_publish_state_debounce),
     TEST_ENTRY(test_TextTest_callback_publish_is_deferred_until_after_dispatch),
     TEST_ENTRY(test_TextTest_retain_setter),
+    TEST_ENTRY(test_TextTest_current_state_is_owned),
+    TEST_ENTRY(test_TextTest_oversized_state_is_rejected),
+    TEST_ENTRY(test_TextTest_callback_state_is_owned_after_dispatch),
+    TEST_ENTRY(test_TextTest_oversized_command_is_ignored),
 };
 
 static const size_t TEST_COUNT = sizeof(tests) / sizeof(tests[0]);

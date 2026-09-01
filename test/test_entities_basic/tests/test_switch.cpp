@@ -110,7 +110,7 @@ void test_SwitchTest_device_discovery_payload(void) {
         (
             "{"
             "\"dev\":{\"ids\":\"testDevice\"},"
-            "\"o\":{\"name\":\"ArduinoHA\",\"sw\":\"2.1.0\"},"
+            "\"o\":{\"name\":\"ArduinoHA\",\"sw\":\"3.0.2\"},"
             "\"cmps\":{"
                 "\"uniqueSwitch\":{"
                     "\"p\":\"switch\","
@@ -206,7 +206,6 @@ void test_SwitchTest_object_id_setter(void) {
         testSwitch,
         (
             "{"
-            "\"obj_id\":\"testId\","
             "\"uniq_id\":\"uniqueSwitch\","
             "\"dev\":{\"ids\":\"testDevice\"},"
             "\"stat_t\":\"testData/testDevice/uniqueSwitch/stat_t\","

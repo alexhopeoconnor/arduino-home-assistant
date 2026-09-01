@@ -13,10 +13,16 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 version="${tag#v}"
 repo_url="https://github.com/alexhopeoconnor/arduino-home-assistant.git"
 reference_files=(README.md docs/getting-started.md)
+defines_file="$root/src/ArduinoHADefines.h"
 
 current_version="$(sed -n 's/.*"version": "\([^"]*\)".*/\1/p' "$root/library.json" | head -n 1)"
 [[ "$current_version" != "$version" ]] || {
     echo "library.json already declares $version; choose a new version." >&2
+    exit 1
+}
+version_macro_count="$(grep -Ec '^#define ARDUINOHA_LIBRARY_VERSION "[0-9]+\.[0-9]+\.[0-9]+"$' "$defines_file" || true)"
+[[ "$version_macro_count" -eq 1 ]] || {
+    echo "src/ArduinoHADefines.h must contain exactly one ARDUINOHA_LIBRARY_VERSION macro." >&2
     exit 1
 }
 grep -q "^## $version$" "$root/CHANGELOG.md" && {
@@ -26,6 +32,7 @@ grep -q "^## $version$" "$root/CHANGELOG.md" && {
 
 sed -i -E '0,/"version": "[0-9]+\.[0-9]+\.[0-9]+"/s//"version": "'"$version"'"/' "$root/library.json"
 sed -i -E "s/^version=[0-9]+\.[0-9]+\.[0-9]+$/version=$version/" "$root/library.properties"
+sed -i -E "s/^#define ARDUINOHA_LIBRARY_VERSION \"[0-9]+\.[0-9]+\.[0-9]+\"$/#define ARDUINOHA_LIBRARY_VERSION \"$version\"/" "$defines_file"
 for file in "${reference_files[@]}"; do
     sed -i -E "s|${repo_url}#v[0-9]+\.[0-9]+\.[0-9]+|${repo_url}#v${version}|g" "$root/$file"
 done

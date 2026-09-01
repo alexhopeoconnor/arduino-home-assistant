@@ -68,7 +68,7 @@ void test_DeviceTrackerTest_device_discovery_payload(void) {
         (
             "{"
             "\"dev\":{\"ids\":\"testDevice\"},"
-            "\"o\":{\"name\":\"ArduinoHA\",\"sw\":\"2.1.0\"},"
+            "\"o\":{\"name\":\"ArduinoHA\",\"sw\":\"3.0.2\"},"
             "\"cmps\":{"
                 "\"uniqueTracker\":{"
                     "\"p\":\"device_tracker\","
@@ -215,7 +215,6 @@ void test_DeviceTrackerTest_object_id_setter(void) {
         tracker,
         (
             "{"
-            "\"obj_id\":\"testId\","
             "\"uniq_id\":\"uniqueTracker\","
             "\"dev\":{\"ids\":\"testDevice\"},"
             "\"stat_t\":\"testData/testDevice/uniqueTracker/stat_t\""

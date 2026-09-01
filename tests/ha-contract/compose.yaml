@@ -1,0 +1,43 @@
+services:
+  mqtt:
+    image: eclipse-mosquitto:2
+    command: ["mosquitto", "-c", "/mosquitto/config/mosquitto.conf"]
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_sub -h localhost -t '$$SYS/broker/version' -C 1 -W 5 >/dev/null 2>&1"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:${HA_VERSION:-stable}
+    environment:
+      TZ: UTC
+    volumes:
+      - ha_config:/config
+      - ./configuration.yaml:/config/configuration.yaml:ro
+    depends_on:
+      mqtt:
+        condition: service_healthy
+
+  tests:
+    build:
+      context: .
+    environment:
+      HA_URL: http://homeassistant:8123
+      MQTT_HOST: mqtt
+      MQTT_PORT: "1883"
+      CONTRACT_MODE: ${CONTRACT_MODE:-migration}
+    volumes:
+      - contract_state:/state
+    depends_on:
+      mqtt:
+        condition: service_healthy
+      homeassistant:
+        condition: service_started
+
+volumes:
+  ha_config:
+  contract_state:
+

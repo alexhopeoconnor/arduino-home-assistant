@@ -139,7 +139,6 @@ void test_ButtonTest_object_id_setter(void) {
         button,
         (
             "{"
-            "\"obj_id\":\"testId\","
             "\"uniq_id\":\"uniqueButton\","
             "\"dev\":{\"ids\":\"testDevice\"},"
             "\"cmd_t\":\"testData/testDevice/uniqueButton/cmd_t\""

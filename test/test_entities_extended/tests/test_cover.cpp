@@ -104,7 +104,7 @@ void test_CoverTest_device_discovery_payload(void) {
         (
             "{"
             "\"dev\":{\"ids\":\"testDevice\"},"
-            "\"o\":{\"name\":\"ArduinoHA\",\"sw\":\"2.1.0\"},"
+            "\"o\":{\"name\":\"ArduinoHA\",\"sw\":\"3.0.2\"},"
             "\"cmps\":{"
                 "\"uniqueCover\":{"
                     "\"p\":\"cover\","
@@ -234,7 +234,6 @@ void test_CoverTest_object_id_setter(void) {
         cover,
         (
             "{"
-            "\"obj_id\":\"testId\","
             "\"uniq_id\":\"uniqueCover\","
             "\"dev\":{\"ids\":\"testDevice\"},"
             "\"stat_t\":\"testData/testDevice/uniqueCover/stat_t\","

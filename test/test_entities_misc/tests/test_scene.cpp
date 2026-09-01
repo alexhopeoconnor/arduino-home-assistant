@@ -95,7 +95,7 @@ void test_SceneTest_device_discovery_payload(void) {
         (
             "{"
             "\"dev\":{\"ids\":\"testDevice\"},"
-            "\"o\":{\"name\":\"ArduinoHA\",\"sw\":\"2.1.0\"},"
+            "\"o\":{\"name\":\"ArduinoHA\",\"sw\":\"3.0.2\"},"
             "\"cmps\":{"
                 "\"uniqueScene\":{"
                     "\"p\":\"scene\","
@@ -167,7 +167,6 @@ void test_SceneTest_object_id_setter(void) {
         scene,
         (
             "{"
-            "\"obj_id\":\"testId\","
             "\"uniq_id\":\"uniqueScene\","
             "\"pl_on\":\"ON\","
             "\"cmd_t\":\"testData/testDevice/uniqueScene/cmd_t\""

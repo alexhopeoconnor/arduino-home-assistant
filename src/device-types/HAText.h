@@ -28,10 +28,15 @@ public:
         ModePassword
     };
 
+    /// Maximum number of bytes accepted in a text command payload.
+    static const uint16_t MaxCommandLength = 255;
+
     /**
      * @param uniqueId The unique ID of the text entity. It needs to be unique in a scope of your device.
      */
     HAText(const char* uniqueId);
+
+    ~HAText() override;
 
     /**
      * Changes state of the text and publishes MQTT message.
@@ -51,8 +56,7 @@ public:
      *
      * @param state New state of the text.
      */
-    inline void setCurrentState(const char* state)
-        { _currentState = state; }
+    void setCurrentState(const char* state);
 
     /**
      * Returns last known state of the text.
@@ -175,6 +179,14 @@ private:
     bool publishState(const char* state);
 
     /**
+     * Copies state into the owned current-state buffer, or clears it when state
+     * is nullptr.
+     *
+     * @returns Returns false when allocating the copy fails.
+     */
+    bool setCurrentStateInternal(const char* state);
+
+    /**
      * Returns progmem string representing mode of the text.
      */
     const __FlashStringHelper* getModeProperty() const;
@@ -203,8 +215,8 @@ private:
     const char* _valueTemplate;
     const char* _commandTemplate;
 
-    /// The current state of the text. It can be nullptr if state wasn't set.
-    const char* _currentState;
+    /// Owned current state of the text. It can be nullptr if state wasn't set.
+    char* _currentState;
 
     /// The callback that will be called when command is received from the HA.
     HATEXT_CALLBACK(_commandCallback);

@@ -18,6 +18,18 @@ if [[ "$manifest_version" != "$version" ]]; then
     echo "library.json is $manifest_version; expected $version for $tag" >&2
     exit 1
 fi
+defines_file="$root/src/ArduinoHADefines.h"
+version_macro_count="$(grep -Ec '^#define ARDUINOHA_LIBRARY_VERSION "[0-9]+\.[0-9]+\.[0-9]+"$' "$defines_file" || true)"
+if [[ "$version_macro_count" -ne 1 ]]; then
+    echo "src/ArduinoHADefines.h must contain exactly one ARDUINOHA_LIBRARY_VERSION macro." >&2
+    exit 1
+fi
+
+defines_version="$(sed -n 's/^#define ARDUINOHA_LIBRARY_VERSION "\([^"]*\)"$/\1/p' "$defines_file")"
+if [[ "$defines_version" != "$version" ]]; then
+    echo "src/ArduinoHADefines.h is $defines_version; expected $version for $tag" >&2
+    exit 1
+fi
 
 if [[ -f "$root/library.properties" ]]; then
     properties_version="$(sed -n 's/^version=//p' "$root/library.properties" | head -n 1)"

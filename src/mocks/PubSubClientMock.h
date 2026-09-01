@@ -19,6 +19,7 @@ struct MqttMessage
     size_t topicSize;
     char* buffer;
     size_t bufferSize;
+    size_t writtenSize;
     bool retained;
 
     MqttMessage() :
@@ -26,6 +27,7 @@ struct MqttMessage
         topicSize(0),
         buffer(nullptr),
         bufferSize(0),
+        writtenSize(0),
         retained(false)
     {
 
@@ -34,11 +36,11 @@ struct MqttMessage
     ~MqttMessage()
     {
         if (topic) {
-            delete topic;
+            delete[] topic;
         }
 
         if (buffer) {
-            delete buffer;
+            delete[] buffer;
         }
     }
 };
@@ -55,7 +57,7 @@ struct MqttSubscription {
     ~MqttSubscription()
     {
         if (topic) {
-            delete topic;
+            delete[] topic;
         }
     }
 };

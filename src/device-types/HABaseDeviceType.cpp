@@ -6,6 +6,15 @@
 #include "../utils/HASerializer.h"
 #include <string.h>
 
+HABaseDeviceType* HABaseDeviceType::_firstInstance = nullptr;
+
+void HABaseDeviceType::registerAllWith(HAMqtt& mqttInstance)
+{
+    for (HABaseDeviceType* entity = _firstInstance; entity; entity = entity->_nextInstance) {
+        mqttInstance.addDeviceType(entity);
+    }
+}
+
 HABaseDeviceType::HABaseDeviceType(
     const __FlashStringHelper* componentName,
     const char* uniqueId
@@ -27,15 +36,34 @@ HABaseDeviceType::HABaseDeviceType(
     _payloadNotAvailable(nullptr),
     _availabilityMode(nullptr),
     _availabilityList(),
-    _availability(AvailabilityDefault)
+    _deviceDiscoveryRemoved(false),
+    _availability(AvailabilityDefault),
+    _nextInstance(_firstInstance)
 {
-    if (mqtt()) {
-        mqtt()->addDeviceType(this);
+    _firstInstance = this;
+    if (HAMqtt* mqttInstance = mqtt()) {
+        mqttInstance->addDeviceType(this);
     }
 }
 
 HABaseDeviceType::~HABaseDeviceType()
 {
+    if (_firstInstance == this) {
+        _firstInstance = _nextInstance;
+    } else {
+        HABaseDeviceType* previous = _firstInstance;
+        while (previous && previous->_nextInstance != this) {
+            previous = previous->_nextInstance;
+        }
+        if (previous) {
+            previous->_nextInstance = _nextInstance;
+        }
+    }
+
+    if (HAMqtt* mqttInstance = mqtt()) {
+        mqttInstance->removeDeviceType(this);
+    }
+
     destroySerializer();
 }
 
@@ -47,6 +75,25 @@ void HABaseDeviceType::setAvailability(bool online)
 
 bool HABaseDeviceType::removeFromDiscovery()
 {
+    HAMqtt* mqttInstance = mqtt();
+    if (!mqttInstance) {
+        return false;
+    }
+
+    if (mqttInstance->isDeviceDiscoveryEnabled() && supportsDeviceDiscovery()) {
+        return mqttInstance->removeDeviceDiscoveryComponent(this);
+    }
+
+    return removeSingleComponentDiscovery();
+}
+
+bool HABaseDeviceType::removeSingleComponentDiscovery()
+{
+    HAMqtt* mqttInstance = mqtt();
+    if (!mqttInstance) {
+        return false;
+    }
+
     const uint16_t topicLength = HASerializer::calculateConfigTopicLength(
         componentName(),
         uniqueId()
@@ -61,11 +108,11 @@ bool HABaseDeviceType::removeFromDiscovery()
     }
 
     destroySerializer();
-    if (!mqtt()->beginPublish(topic, 0, true)) {
+    if (!mqttInstance->beginPublish(topic, 0, true)) {
         return false;
     }
 
-    return mqtt()->endPublish();
+    return mqttInstance->endPublish();
 }
 
 bool HABaseDeviceType::republishDiscovery()
@@ -79,10 +126,7 @@ bool HABaseDeviceType::republishDiscovery()
         return publishConfig();
     }
 
-    // Clear any stale per-entity retained config so device discovery remains
-    // the single source of truth for supported entities.
-    removeFromDiscovery();
-    return mqttInstance->publishDeviceDiscovery();
+    return mqttInstance->republishDeviceDiscoveryComponent(this);
 }
 
 HAMqtt* HABaseDeviceType::mqtt()
@@ -136,8 +180,12 @@ void HABaseDeviceType::destroySerializer()
 
 bool HABaseDeviceType::publishConfig()
 {
-    buildSerializer();
+    HAMqtt* mqttInstance = mqtt();
+    if (!mqttInstance) {
+        return false;
+    }
 
+    buildSerializer();
     if (_serializer == nullptr) {
         return false;
     }
@@ -151,15 +199,19 @@ bool HABaseDeviceType::publishConfig()
     bool published = false;
     if (topicLength > 0 && dataLength > 0) {
         char topic[topicLength];
-        HASerializer::generateConfigTopic(
+        if (!HASerializer::generateConfigTopic(
             topic,
             componentName(),
             uniqueId()
-        );
+        )) {
+            destroySerializer();
+            return false;
+        }
 
-        if (mqtt()->beginPublish(topic, dataLength, true)) {
-            _serializer->flush();
-            published = mqtt()->endPublish();
+        if (mqttInstance->beginPublish(topic, dataLength, true)) {
+            const bool flushed = _serializer->flush();
+            const bool ended = mqttInstance->endPublish();
+            published = flushed && ended;
         }
     }
 
@@ -169,7 +221,12 @@ bool HABaseDeviceType::publishConfig()
 
 void HABaseDeviceType::publishAvailability()
 {
-    const HADevice* device = mqtt()->getDevice();
+    HAMqtt* mqttInstance = mqtt();
+    if (!mqttInstance) {
+        return;
+    }
+
+    const HADevice* device = mqttInstance->getDevice();
     if (
         !device ||
         device->isSharedAvailabilityEnabled() ||
@@ -251,13 +308,15 @@ bool HABaseDeviceType::publishAbsolute(
         return false;
     }
 
+    HAMqtt* mqttInstance = mqtt();
     const uint16_t len = strlen(payload);
-    if (!mqtt()->beginPublish(fullTopic, len, retained)) {
+    if (!mqttInstance->beginPublish(fullTopic, len, retained)) {
         return false;
     }
 
-    mqtt()->writePayload(payload, len);
-    return mqtt()->endPublish();
+    const bool written = mqttInstance->writePayload(payload, len);
+    const bool ended = mqttInstance->endPublish();
+    return written && ended;
 }
 
 bool HABaseDeviceType::publishOnDataTopic(
@@ -305,7 +364,12 @@ bool HABaseDeviceType::publishOnDataTopic(
     bool isProgmemData
 )
 {
-    if (!payload) {
+    HAMqtt* mqttInstance = mqtt();
+    if (!payload || !mqttInstance) {
+        return false;
+    }
+
+    if (!topic) {
         return false;
     }
 
@@ -326,14 +390,16 @@ bool HABaseDeviceType::publishOnDataTopic(
         return false;
     }
 
-    if (mqtt()->beginPublish(fullTopic, length, retained)) {
+    if (mqttInstance->beginPublish(fullTopic, length, retained)) {
+        bool written = false;
         if (isProgmemData) {
-            mqtt()->writePayload(AHATOFSTR(payload));
+            written = mqttInstance->writePayload(AHATOFSTR(payload));
         } else {
-            mqtt()->writePayload(payload, length);
+            written = mqttInstance->writePayload(payload, length);
         }
 
-        return mqtt()->endPublish();
+        const bool ended = mqttInstance->endPublish();
+        return written && ended;
     }
 
     return false;
@@ -353,12 +419,6 @@ void HABaseDeviceType::setEntityIdProperty(HASerializer* serializer) const
     const char* defaultEntityId = nonEmptyString(_defaultEntityId);
     if (defaultEntityId) {
         serializer->set(AHATOFSTR(HADefaultEntityIdProperty), defaultEntityId);
-        return;
-    }
-
-    const char* objectId = nonEmptyString(_objectId);
-    if (objectId) {
-        serializer->set(AHATOFSTR(HAObjectIdProperty), objectId);
     }
 }
 

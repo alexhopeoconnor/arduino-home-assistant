@@ -66,7 +66,7 @@ void test_CameraTest_device_discovery_payload(void) {
         (
             "{"
             "\"dev\":{\"ids\":\"testDevice\"},"
-            "\"o\":{\"name\":\"ArduinoHA\",\"sw\":\"2.1.0\"},"
+            "\"o\":{\"name\":\"ArduinoHA\",\"sw\":\"3.0.2\"},"
             "\"cmps\":{"
                 "\"uniqueCamera\":{"
                     "\"p\":\"camera\","
@@ -127,7 +127,6 @@ void test_CameraTest_object_id_setter(void) {
         camera,
         (
             "{"
-            "\"obj_id\":\"testId\","
             "\"uniq_id\":\"uniqueCamera\","
             "\"dev\":{\"ids\":\"testDevice\"},"
             "\"t\":\"testData/testDevice/uniqueCamera/t\""
