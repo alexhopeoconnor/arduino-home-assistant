@@ -29,6 +29,7 @@ services:
       MQTT_HOST: mqtt
       MQTT_PORT: "1883"
       CONTRACT_MODE: ${CONTRACT_MODE:-migration}
+      CONTRACT_EXPECT_DISABLED_CLEANUP: ${CONTRACT_EXPECT_DISABLED_CLEANUP:-0}
     volumes:
       - contract_state:/state
     depends_on:

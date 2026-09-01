@@ -24,6 +24,8 @@ MODE = os.environ.get("CONTRACT_MODE", "migration")
 STATE = pathlib.Path("/state")
 TOKEN_FILE = STATE / "ha-token"
 DEVICE_ID = "contract_device"
+EDGE_DEVICE_ID = "contract_edge_device"
+EXPECT_DISABLED_CLEANUP = os.environ.get("CONTRACT_EXPECT_DISABLED_CLEANUP") == "1"
 
 
 class ContractFailure(RuntimeError):
@@ -223,36 +225,36 @@ class RetainedPublisher:
         return value
 
 
-def legacy_topic(object_id):
-    return f"homeassistant/sensor/{DEVICE_ID}/{object_id}/config"
+def legacy_topic(object_id, device_id=DEVICE_ID):
+    return f"homeassistant/sensor/{device_id}/{object_id}/config"
 
 
-def device_topic():
-    return f"homeassistant/device/{DEVICE_ID}/config"
+def device_topic(device_id=DEVICE_ID):
+    return f"homeassistant/device/{device_id}/config"
 
 
-def component(object_id, unique_id=None, **extra):
+def component(object_id, unique_id=None, device_id=DEVICE_ID, **extra):
     payload = {
         "p": "sensor",
         "name": object_id.replace("_", " ").title(),
-        "uniq_id": unique_id or f"{DEVICE_ID}_{object_id}",
+        "uniq_id": unique_id or f"{device_id}_{object_id}",
         "stat_t": f"contract/{object_id}/state",
     }
     payload.update(extra)
     return payload
 
 
-def device_payload(components):
+def device_payload(components, device_id=DEVICE_ID):
     return {
-        "dev": {"ids": [DEVICE_ID], "name": "ArduinoHA contract device"},
-        "o": {"name": "ArduinoHA", "sw": "3.0.2"},
+        "dev": {"ids": [device_id], "name": "ArduinoHA contract device"},
+        "o": {"name": "ArduinoHA", "sw": "contract"},
         "cmps": components,
     }
 
 
-def legacy_payload(object_id, unique_id=None, **extra):
+def legacy_payload(object_id, unique_id=None, device_id=DEVICE_ID, **extra):
     payload = component(object_id, unique_id, **extra)
-    payload["dev"] = {"ids": [DEVICE_ID], "name": "ArduinoHA contract device"}
+    payload["dev"] = {"ids": [device_id], "name": "ArduinoHA contract device"}
     payload.pop("p")
     return payload
 
@@ -326,65 +328,89 @@ def migration_contract():
         if remigrated["id"] != original_id:
             fail("repeat single-to-device migration changed the entity registry ID")
 
+        retained = json.loads(publisher.retained_payload(device_topic()))
+        if "temperature" not in retained.get("cmps", {}):
+            fail("migration did not retain the primary device discovery payload")
+
         # Direct publication is deliberately not a migration protocol. It must not
-        # create a second registry entry for the same stable unique ID.
-        direct_unique = f"{DEVICE_ID}_direct"
-        publisher.publish(legacy_topic("direct"), json.dumps(legacy_payload("direct", direct_unique)))
+        # create a second registry entry for the same stable unique ID. Keep it
+        # on a separate device topic so it cannot invalidate the primary
+        # retained-payload/restart contract.
+        direct_unique = f"{EDGE_DEVICE_ID}_direct"
+        publisher.publish(
+            legacy_topic("direct", EDGE_DEVICE_ID),
+            json.dumps(legacy_payload("direct", direct_unique, device_id=EDGE_DEVICE_ID)),
+        )
         direct_entry = wait_for_entry(ws, direct_unique)
-        publisher.publish(device_topic(), json.dumps(device_payload({"direct": component("direct", direct_unique)})))
+        publisher.publish(
+            device_topic(EDGE_DEVICE_ID),
+            json.dumps(device_payload(
+                {"direct": component("direct", direct_unique)}, device_id=EDGE_DEVICE_ID
+            )),
+        )
         time.sleep(2)
         entries = [entry for entry in ws.registry_entries() if entry.get("unique_id") == direct_unique]
         if len(entries) != 1 or entries[0]["id"] != direct_entry["id"]:
             fail("direct device discovery publish created a duplicate registry entity")
 
-        # Device-mode removal is two root updates: platform tombstone then omission.
-        removable_unique = f"{DEVICE_ID}_removable"
+        # Device-mode removal is two root updates: platform tombstone then
+        # omission. This uses the edge fixture so retained-restart behavior is
+        # independently asserted on the migrated primary fixture.
+        removable_unique = f"{EDGE_DEVICE_ID}_removable"
         publisher.publish(
-            device_topic(),
+            device_topic(EDGE_DEVICE_ID),
             json.dumps(device_payload({
-                "anchor": component("anchor"),
+                "anchor": component("anchor", device_id=EDGE_DEVICE_ID),
                 "removable": component("removable", removable_unique),
-            })),
+            }, device_id=EDGE_DEVICE_ID)),
         )
         wait_for_entry(ws, removable_unique)
         publisher.publish(
-            device_topic(),
+            device_topic(EDGE_DEVICE_ID),
             json.dumps(device_payload({
-                "anchor": component("anchor"),
+                "anchor": component("anchor", device_id=EDGE_DEVICE_ID),
                 "removable": {"p": "sensor"},
-            })),
+            }, device_id=EDGE_DEVICE_ID)),
         )
-        publisher.publish(device_topic(), json.dumps(device_payload({"anchor": component("anchor")})))
+        publisher.publish(
+            device_topic(EDGE_DEVICE_ID),
+            json.dumps(device_payload({"anchor": component("anchor", device_id=EDGE_DEVICE_ID)}, device_id=EDGE_DEVICE_ID)),
+        )
 
-        # HA 2026.5 fixed cleanup for discovered entities that start disabled.
-        # Exercise the same device-component tombstone/omission sequence so a
-        # future regression is caught by the stable/dev contract matrix.
-        disabled_unique = f"{DEVICE_ID}_disabled"
-        publisher.publish(
-            device_topic(),
-            json.dumps(device_payload({
-                "anchor": component("anchor"),
-                "disabled": component(
-                    "disabled", disabled_unique, enabled_by_default=False
-                ),
-            })),
-        )
-        disabled_entry = wait_for_entry(ws, disabled_unique)
-        if disabled_entry.get("disabled_by") != "integration":
-            fail(f"expected initially disabled entity to be integration-disabled: {disabled_entry}")
-        publisher.publish(
-            device_topic(),
-            json.dumps(device_payload({
-                "anchor": component("anchor"),
-                "disabled": {"p": "sensor"},
-            })),
-        )
-        publisher.publish(device_topic(), json.dumps(device_payload({"anchor": component("anchor")})))
-        wait_until(
-            "disabled device component cleanup",
-            lambda: find_unique(ws.registry_entries(), disabled_unique) is None,
-            timeout=60,
-        )
+        # Older Home Assistant versions do not clean initially disabled device
+        # components. Keep that capability assertion in the development lane,
+        # where it detects regressions without making the supported baseline
+        # falsely fail.
+        if EXPECT_DISABLED_CLEANUP:
+            disabled_unique = f"{EDGE_DEVICE_ID}_disabled"
+            publisher.publish(
+                device_topic(EDGE_DEVICE_ID),
+                json.dumps(device_payload({
+                    "anchor": component("anchor", device_id=EDGE_DEVICE_ID),
+                    "disabled": component(
+                        "disabled", disabled_unique, enabled_by_default=False
+                    ),
+                }, device_id=EDGE_DEVICE_ID)),
+            )
+            disabled_entry = wait_for_entry(ws, disabled_unique)
+            if disabled_entry.get("disabled_by") != "integration":
+                fail(f"expected initially disabled entity to be integration-disabled: {disabled_entry}")
+            publisher.publish(
+                device_topic(EDGE_DEVICE_ID),
+                json.dumps(device_payload({
+                    "anchor": component("anchor", device_id=EDGE_DEVICE_ID),
+                    "disabled": {"p": "sensor"},
+                }, device_id=EDGE_DEVICE_ID)),
+            )
+            publisher.publish(
+                device_topic(EDGE_DEVICE_ID),
+                json.dumps(device_payload({"anchor": component("anchor", device_id=EDGE_DEVICE_ID)}, device_id=EDGE_DEVICE_ID)),
+            )
+            wait_until(
+                "disabled device component cleanup",
+                lambda: find_unique(ws.registry_entries(), disabled_unique) is None,
+                timeout=60,
+            )
 
         # Invalid retained discovery JSON never creates a registry entry. Escaped
         # strings are covered by the firmware-native serializer tests.

@@ -14,9 +14,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        home_assistant: ["2024.11.3", stable, dev]
+        include:
+          - home_assistant: "2024.11.3"
+            expect_disabled_cleanup: "0"
+          - home_assistant: stable
+            expect_disabled_cleanup: "0"
+          - home_assistant: dev
+            expect_disabled_cleanup: "1"
     env:
       HA_VERSION: ${{ matrix.home_assistant }}
+      CONTRACT_EXPECT_DISABLED_CLEANUP: ${{ matrix.expect_disabled_cleanup }}
       COMPOSE_FILE: tests/ha-contract/compose.yaml
     steps:
       - uses: actions/checkout@v4

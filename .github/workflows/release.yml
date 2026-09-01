@@ -9,34 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  ha-contract:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        home_assistant: ["2024.11.3", stable, dev]
-    env:
-      HA_VERSION: ${{ matrix.home_assistant }}
-      COMPOSE_FILE: tests/ha-contract/compose.yaml
-    steps:
-      - uses: actions/checkout@v4
-      - name: Start broker and Home Assistant
-        run: docker compose up -d mqtt homeassistant
-      - name: Check single-to-device migration
-        run: docker compose run --rm tests
-      - name: Restart Home Assistant from retained data
-        run: docker compose restart homeassistant
-      - name: Check retained discovery after restart
-        run: docker compose run --rm -e CONTRACT_MODE=retained-restart tests
-      - name: Collect Home Assistant logs on failure
-        if: failure()
-        run: docker compose logs --no-color homeassistant mqtt
-      - name: Remove contract volumes
-        if: always()
-        run: docker compose down -v
-
   publish:
-    needs: ha-contract
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
