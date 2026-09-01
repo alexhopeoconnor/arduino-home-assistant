@@ -11,7 +11,7 @@ ArduinoHA talks to Home Assistant over **MQTT** (TCP). You need an MQTT broker r
 
 ```ini
 lib_deps =
-    home-assistant-integration=https://github.com/alexhopeoconnor/arduino-home-assistant.git#v3.0.0
+    home-assistant-integration=https://github.com/alexhopeoconnor/arduino-home-assistant.git#v3.0.1
 ```
 
 **Arduino IDE:** this fork is not indexed by Library Manager. Download the

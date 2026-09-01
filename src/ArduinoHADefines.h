@@ -55,7 +55,7 @@
 #endif
 
 
-#if defined(__SAMD21G18A__) or defined(__SAM3X8E__)
+#if defined(__SAMD21G18A__) or defined(__SAM3X8E__) or (defined(ESP32) and defined(ESP_ARDUINO_VERSION_MAJOR) and ESP_ARDUINO_VERSION_MAJOR >= 3)
     #define ARDUINOHA_INT_OVERLOAD
 #endif
 

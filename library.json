@@ -1,6 +1,6 @@
 {
   "name": "home-assistant-integration",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Maintained Home Assistant MQTT discovery and entity integration for Arduino and ESP devices.",
   "keywords": [
     "mqtt",

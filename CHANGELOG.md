@@ -1,8 +1,10 @@
 # Changelog
 
-## Unreleased
+## 3.0.1
 
-No unreleased changes.
+- Build and test against the Arduino 3-compatible pioarduino ESP32 platform.
+- Enable the integer overload expected by Arduino-ESP32 3 while preserving the
+  existing ArduinoHA public API.
 
 ## 3.0.0
 

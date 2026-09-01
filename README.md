@@ -49,7 +49,7 @@ Read [Getting started](docs/getting-started.md) before copying this into product
 
 ```ini
 lib_deps =
-    home-assistant-integration=https://github.com/alexhopeoconnor/arduino-home-assistant.git#v3.0.0
+    home-assistant-integration=https://github.com/alexhopeoconnor/arduino-home-assistant.git#v3.0.1
 ```
 
 PlatformIO clones the Git repository and checks out the ref after `#`; that ref is a release tag, not a GitHub Release asset. Arduino IDE is supported through the included [`library.properties`](library.properties); see [Getting started](docs/getting-started.md#install-the-library).
