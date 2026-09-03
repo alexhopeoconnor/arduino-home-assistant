@@ -25,6 +25,7 @@ class PubSubClientMock;
 
 class HADevice;
 class HABaseDeviceType;
+class HASerializer;
 
 #if defined(ARDUINO_API_VERSION)
 using namespace arduino;
@@ -609,6 +610,11 @@ private:
 
     bool publishDeviceDiscoveryPayload(HABaseDeviceType* removalType = nullptr);
 
+    HASerializer* buildDeviceDiscoveryComponentSerializer(
+        HABaseDeviceType* deviceType,
+        HABaseDeviceType* removalType
+    );
+
     bool clearDeviceDiscoveryConfig();
 
     bool publishDeviceDiscoveryMigrationMarker(HABaseDeviceType* deviceType);
@@ -687,6 +693,15 @@ private:
      */
     String formatDirectPublishFailureDiagnostics(bool hamqttConnectedBefore, int pubsubStateBefore) const;
 
+    // Buffer direct MQTT streaming writes so serializers do not issue hundreds
+    // of tiny TCP writes while a PubSubClient publish is open.
+    static const uint16_t DirectPublishBufferSize = 128;
+    bool flushDirectPublishBuffer();
+    bool appendDirectPublishPayload(const uint8_t* data, uint16_t length);
+    bool appendDirectPublishProgmemPayload(const __FlashStringHelper* src);
+    void clearDirectPublishBuffer();
+    void abortDirectPublish();
+
 #ifdef ARDUINOHA_TEST
     PubSubClientMock* _mqtt;
 #else
@@ -696,6 +711,10 @@ private:
     /// Pointer to the active MQTT client implementation.
     PubSubClient* _mqtt;
 #endif
+
+    uint8_t _directPublishBuffer[DirectPublishBufferSize];
+    uint16_t _directPublishBufferLength;
+    bool _directPublishActive;
 
     /// Instance of the HADevice passed to the constructor.
     const HADevice& _device;

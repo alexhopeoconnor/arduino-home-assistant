@@ -140,9 +140,9 @@ public:
 };
 ```
 
-`arduinoHALog(...)` and `arduinoHALogf(...)` support subsystem-tagged messages such as `mqtt`, `discovery`, `availability`, `serializer`, `entity`, and `device`. `DeviceFramework` installs a structured sink so ArduinoHA messages follow the same main log stream as the rest of the firmware.
+`arduinoHALog(...)` and `arduinoHALogf(...)` support subsystem-tagged messages such as `mqtt`, `discovery`, `availability`, `serializer`, `entity`, and `device`. Install a sink when you want those messages to join your application’s normal serial or structured log stream.
 
-Optional transport context for diagnostics (registered automatically by **DeviceFramework**): **`arduinoHASetNetworkStatusFn`** (for example returning `WiFi.status()` so publish failure lines can include `wifi=`).
+Applications that use Wi-Fi can register **`arduinoHASetNetworkStatusFn`** with a callback returning `WiFi.status()`. Publish failure diagnostics can then include the current Wi-Fi status without coupling ArduinoHA to a particular network library.
 
 **Exclude unused device types** (saves flash from vtables), e.g.:
 

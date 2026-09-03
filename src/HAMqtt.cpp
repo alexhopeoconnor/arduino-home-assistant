@@ -80,6 +80,8 @@ HAMqtt::HAMqtt(
     uint8_t maxDevicesTypesNb
 ) :
     _mqtt(pubSub),
+    _directPublishBufferLength(0),
+    _directPublishActive(false),
     HAMQTT_INIT
 {
     _instance = this;
@@ -93,6 +95,8 @@ HAMqtt::HAMqtt(
 ) :
     _mqttStorage(netClient),
     _mqtt(&_mqttStorage),
+    _directPublishBufferLength(0),
+    _directPublishActive(false),
     HAMQTT_INIT
 {
     _instance = this;
@@ -276,18 +280,6 @@ void HAMqtt::loop()
 
     if (!result) {
         _lastDisconnectReason = DiagnosticDisconnectReason::LoopReturnedFalse;
-        const uint32_t now = millis();
-        arduinoHALog(
-            ArduinoHALogLevel::Warn,
-            kMqtt,
-            String(F("loop returned false pubsub=")) + String(rawState) +
-                F(" deferred=") + String(_deferredCount) +
-                F(" depth=") + String(_messageDispatchDepth) +
-                F(" sinceLastMsgMs=") +
-                String(_lastMessageAt ? (now - _lastMessageAt) : static_cast<uint32_t>(0)) +
-                F(" sinceLastPubMs=") +
-                String(_lastPublishAt ? (now - _lastPublishAt) : static_cast<uint32_t>(0))
-        );
         connectToServer();
     }
 
@@ -415,36 +407,16 @@ bool HAMqtt::publish(const char* topic, const char* payload, bool retained)
         );
     }
 
-    const bool connBeforePub = isConnected();
-    const int psBeforePub = getPubSubState();
-    if (!_mqtt->beginPublish(topic, payloadLength, retained)) {
-        arduinoHALog(
-            ArduinoHALogLevel::Warn,
-            kMqtt,
-            String(F("beginPublish failed topic=")) + topic + F(" len=") + String(payloadLength) +
-                formatDirectPublishFailureDiagnostics(connBeforePub, psBeforePub)
-        );
+    if (!beginPublish(topic, payloadLength, retained)) {
         return false;
     }
+
     const bool written = writePayload(
         reinterpret_cast<const uint8_t*>(payload),
         payloadLength
     );
-    const bool connBeforeEnd = isConnected();
-    const int psBeforeEnd = getPubSubState();
-    const bool ended = _mqtt->endPublish();
-    const bool ok = written && ended;
-    if (!ok) {
-        arduinoHALog(
-            ArduinoHALogLevel::Warn,
-            kMqtt,
-            String(written ? F("endPublish failed topic=") : F("payload write failed topic=")) + topic +
-                formatDirectPublishFailureDiagnostics(connBeforeEnd, psBeforeEnd)
-        );
-    } else {
-        _lastPublishAt = millis();
-    }
-    return ok;
+    const bool ended = endPublish();
+    return written && ended;
 }
 
 bool HAMqtt::beginPublish(
@@ -465,6 +437,10 @@ bool HAMqtt::beginPublish(
     }
 
     if (!isProcessingMessage()) {
+        if (_directPublishActive) {
+            return false;
+        }
+
         const bool connBefore = isConnected();
         const int psBefore = getPubSubState();
         const bool ok = _mqtt->beginPublish(topic, payloadLength, retained);
@@ -475,8 +451,12 @@ bool HAMqtt::beginPublish(
                 String(F("beginPublish failed topic=")) + topic + F(" len=") + String(payloadLength) +
                     formatDirectPublishFailureDiagnostics(connBefore, psBefore)
             );
+            return false;
         }
-        return ok;
+
+        clearDirectPublishBuffer();
+        _directPublishActive = true;
+        return true;
     }
 
     if (_deferredBuilder.active) {
@@ -530,6 +510,10 @@ bool HAMqtt::writePayload(const uint8_t* data, const uint16_t length)
         return true;
     }
 
+    if (_directPublishActive) {
+        return appendDirectPublishPayload(data, length);
+    }
+
     return _mqtt->write(data, length) == length;
 }
 
@@ -556,6 +540,10 @@ bool HAMqtt::writePayload(const __FlashStringHelper* src)
         return true;
     }
 
+    if (_directPublishActive) {
+        return appendDirectPublishProgmemPayload(src);
+    }
+
     const uint16_t length = static_cast<uint16_t>(strlen_P(reinterpret_cast<PGM_P>(src)));
     return _mqtt->print(src) == length;
 }
@@ -563,9 +551,17 @@ bool HAMqtt::writePayload(const __FlashStringHelper* src)
 bool HAMqtt::endPublish()
 {
     if (!isProcessingMessage()) {
+        if (!_directPublishActive) {
+            return false;
+        }
+
+        const bool payloadFlushed = flushDirectPublishBuffer();
         const bool connBefore = isConnected();
         const int psBefore = getPubSubState();
-        const bool ok = _mqtt->endPublish();
+        const bool ended = _mqtt->endPublish();
+        clearDirectPublishBuffer();
+        _directPublishActive = false;
+        const bool ok = payloadFlushed && ended;
         if (ok) {
             _lastPublishAt = millis();
         } else {
@@ -601,6 +597,72 @@ bool HAMqtt::endPublish()
     }
     clearDeferredBuilder();
     return ok;
+}
+
+bool HAMqtt::flushDirectPublishBuffer()
+{
+    if (_directPublishBufferLength == 0) {
+        return true;
+    }
+
+    const uint16_t length = _directPublishBufferLength;
+    _directPublishBufferLength = 0;
+    return _mqtt->write(_directPublishBuffer, length) == length;
+}
+
+bool HAMqtt::appendDirectPublishPayload(const uint8_t* data, uint16_t length)
+{
+    while (length > 0) {
+        if (_directPublishBufferLength == DirectPublishBufferSize &&
+            !flushDirectPublishBuffer()) {
+            return false;
+        }
+
+        const uint16_t available =
+            static_cast<uint16_t>(DirectPublishBufferSize - _directPublishBufferLength);
+        const uint16_t copied = length < available ? length : available;
+        memcpy(_directPublishBuffer + _directPublishBufferLength, data, copied);
+        _directPublishBufferLength = static_cast<uint16_t>(_directPublishBufferLength + copied);
+        data += copied;
+        length = static_cast<uint16_t>(length - copied);
+    }
+
+    return true;
+}
+
+bool HAMqtt::appendDirectPublishProgmemPayload(const __FlashStringHelper* src)
+{
+    PGM_P data = reinterpret_cast<PGM_P>(src);
+    uint16_t remaining = static_cast<uint16_t>(strlen_P(data));
+    uint16_t offset = 0;
+    while (remaining > 0) {
+        if (_directPublishBufferLength == DirectPublishBufferSize &&
+            !flushDirectPublishBuffer()) {
+            return false;
+        }
+
+        const uint16_t available =
+            static_cast<uint16_t>(DirectPublishBufferSize - _directPublishBufferLength);
+        const uint16_t copied = remaining < available ? remaining : available;
+        memcpy_P(_directPublishBuffer + _directPublishBufferLength, data + offset, copied);
+        _directPublishBufferLength = static_cast<uint16_t>(_directPublishBufferLength + copied);
+        offset = static_cast<uint16_t>(offset + copied);
+        remaining = static_cast<uint16_t>(remaining - copied);
+    }
+
+    return true;
+}
+
+void HAMqtt::clearDirectPublishBuffer()
+{
+    _directPublishBufferLength = 0;
+}
+
+void HAMqtt::abortDirectPublish()
+{
+    clearDirectPublishBuffer();
+    _directPublishActive = false;
+    _mqtt->disconnect();
 }
 
 bool HAMqtt::subscribe(const char* topic)
@@ -945,6 +1007,10 @@ void HAMqtt::onConnectedLogic()
         publishDeviceDiscovery();
     }
 
+    if (!isConnected()) {
+        return;
+    }
+
     if (_connectedCallback) {
         _connectedCallback();
     }
@@ -963,6 +1029,26 @@ bool HAMqtt::publishDeviceDiscovery()
     }
 
     return publishDeviceDiscoveryPayload();
+}
+
+HASerializer* HAMqtt::buildDeviceDiscoveryComponentSerializer(
+    HABaseDeviceType* deviceType,
+    HABaseDeviceType* removalType
+)
+{
+    if (deviceType != removalType) {
+        return deviceType->buildDeviceDiscoverySerializer();
+    }
+
+    HASerializer* serializer = new (std::nothrow) HASerializer(deviceType, 1);
+    if (serializer) {
+        serializer->set(
+            AHATOFSTR(HAPlatformProperty),
+            deviceType->componentName(),
+            HASerializer::ProgmemPropertyValue
+        );
+    }
+    return serializer;
 }
 
 bool HAMqtt::publishDeviceDiscoveryPayload(HABaseDeviceType* removalType)
@@ -986,7 +1072,6 @@ bool HAMqtt::publishDeviceDiscoveryPayload(HABaseDeviceType* removalType)
     }
 
     HABaseDeviceType* componentTypes[_devicesTypesNb];
-    HASerializer* componentSerializers[_devicesTypesNb];
     uint8_t componentSerializerCount = 0;
     uint32_t componentsPayloadLength = 2; // {}
 
@@ -999,9 +1084,6 @@ bool HAMqtt::publishDeviceDiscoveryPayload(HABaseDeviceType* removalType)
         const char* uniqueId = deviceType->uniqueId();
         if (!uniqueId || !HAJson::isValidDiscoveryTopicToken(uniqueId)) {
             arduinoHALog(ArduinoHALogLevel::Error, kDiscovery, F("device discovery rejected invalid component ID"));
-            for (uint8_t j = 0; j < componentSerializerCount; j++) {
-                delete componentSerializers[j];
-            }
             return false;
         }
 
@@ -1009,24 +1091,9 @@ bool HAMqtt::publishDeviceDiscoveryPayload(HABaseDeviceType* removalType)
             continue;
         }
 
-        HASerializer* serializer = nullptr;
-        if (deviceType == removalType) {
-            serializer = new (std::nothrow) HASerializer(deviceType, 1);
-            if (serializer) {
-                serializer->set(
-                    AHATOFSTR(HAPlatformProperty),
-                    deviceType->componentName(),
-                    HASerializer::ProgmemPropertyValue
-                );
-            }
-        } else {
-            serializer = deviceType->buildDeviceDiscoverySerializer();
-        }
+        HASerializer* serializer = buildDeviceDiscoveryComponentSerializer(deviceType, removalType);
         if (!serializer) {
             arduinoHALog(ArduinoHALogLevel::Error, kDiscovery, F("device discovery component serializer unavailable"));
-            for (uint8_t j = 0; j < componentSerializerCount; j++) {
-                delete componentSerializers[j];
-            }
             return false;
         }
 
@@ -1039,9 +1106,6 @@ bool HAMqtt::publishDeviceDiscoveryPayload(HABaseDeviceType* removalType)
         ) {
             delete serializer;
             arduinoHALog(ArduinoHALogLevel::Error, kDiscovery, F("device discovery component serializer invalid or too large"));
-            for (uint8_t j = 0; j < componentSerializerCount; j++) {
-                delete componentSerializers[j];
-            }
             return false;
         }
 
@@ -1051,14 +1115,11 @@ bool HAMqtt::publishDeviceDiscoveryPayload(HABaseDeviceType* removalType)
         componentsPayloadLength += componentKeySize + 1 + serializerSize;
         if (componentsPayloadLength > UINT16_MAX) {
             delete serializer;
-            for (uint8_t j = 0; j < componentSerializerCount; j++) {
-                delete componentSerializers[j];
-            }
             return false;
         }
 
-        componentTypes[componentSerializerCount] = deviceType;
-        componentSerializers[componentSerializerCount++] = serializer;
+        componentTypes[componentSerializerCount++] = deviceType;
+        delete serializer;
     }
 
     if (componentSerializerCount == 0) {
@@ -1076,9 +1137,6 @@ bool HAMqtt::publishDeviceDiscoveryPayload(HABaseDeviceType* removalType)
     }
     const uint16_t originSerializerSize = originSerializer.calculateSize();
     if (originSerializerSize == 0) {
-        for (uint8_t i = 0; i < componentSerializerCount; i++) {
-            delete componentSerializers[i];
-        }
         return false;
     }
 
@@ -1088,9 +1146,6 @@ bool HAMqtt::publishDeviceDiscoveryPayload(HABaseDeviceType* removalType)
         strlen(deviceUniqueId) + 1 +
         strlen_P(HAConfigTopic) + 1;
     if (topicLength == 0 || topicLength > UINT16_MAX) {
-        for (uint8_t i = 0; i < componentSerializerCount; i++) {
-            delete componentSerializers[i];
-        }
         return false;
     }
 
@@ -1112,9 +1167,6 @@ bool HAMqtt::publishDeviceDiscoveryPayload(HABaseDeviceType* removalType)
         componentsPayloadLength +
         strlen_P(HASerializerJsonDataSuffix);
     if (payloadLength > UINT16_MAX) {
-        for (uint8_t i = 0; i < componentSerializerCount; i++) {
-            delete componentSerializers[i];
-        }
         return false;
     }
 
@@ -1137,9 +1189,6 @@ bool HAMqtt::publishDeviceDiscoveryPayload(HABaseDeviceType* removalType)
                 F(" len=") + String(payloadLength) +
                 formatDirectPublishFailureDiagnostics(discConnBefore, discPsBefore)
         );
-        for (uint8_t i = 0; i < componentSerializerCount; i++) {
-            delete componentSerializers[i];
-        }
         return false;
     }
 
@@ -1166,23 +1215,41 @@ bool HAMqtt::publishDeviceDiscoveryPayload(HABaseDeviceType* removalType)
         }
 
         if (written) {
-            const char* componentId = componentTypes[i]->uniqueId();
+            HABaseDeviceType* componentType = componentTypes[i];
+            HASerializer* serializer =
+                buildDeviceDiscoveryComponentSerializer(componentType, removalType);
+            if (!serializer) {
+                written = false;
+                continue;
+            }
+
+            const char* componentId = componentType->uniqueId();
             const char quote = '"';
             const char colon = ':';
             written = writePayload(&quote, 1) &&
                 writePayload(componentId, strlen(componentId)) &&
                 writePayload(&quote, 1) &&
                 writePayload(&colon, 1) &&
-                componentSerializers[i]->flush();
+                serializer->flush();
+            delete serializer;
         }
-        delete componentSerializers[i];
     }
 
-    if (written) {
-        written = writePayload(AHATOFSTR(HASerializerJsonDataSuffix)) &&
-            writePayload(AHATOFSTR(HASerializerJsonDataSuffix));
+    if (!written) {
+        abortDirectPublish();
+        arduinoHALog(ArduinoHALogLevel::Warn, kDiscovery, F("device discovery stream aborted"));
+        return false;
     }
-    const bool published = endPublish() && written;
+
+    written = writePayload(AHATOFSTR(HASerializerJsonDataSuffix)) &&
+        writePayload(AHATOFSTR(HASerializerJsonDataSuffix));
+    if (!written) {
+        abortDirectPublish();
+        arduinoHALog(ArduinoHALogLevel::Warn, kDiscovery, F("device discovery stream aborted"));
+        return false;
+    }
+
+    const bool published = endPublish();
     if (!published) {
         arduinoHALog(ArduinoHALogLevel::Warn, kDiscovery, F("device discovery publish failed"));
     }

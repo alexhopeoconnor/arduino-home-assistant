@@ -31,7 +31,16 @@ HA_VERSION=2024.11.3 docker compose -f tests/ha-contract/compose.yaml down -v
 ```
 
 Use `HA_VERSION=stable` and `HA_VERSION=dev` for the current supported and
-development Home Assistant images. The test uses only ephemeral named volumes;
+development Home Assistant images.
+
+The checked-in GitHub workflow runs the baseline, stable, and development images
+as a compatibility audit. When it is on the repository's default branch, GitHub
+exposes it for manual dispatch and the weekly schedule. It is not a tag-release
+gate.
+
+For a local development-image test, add `CONTRACT_EXPECT_DISABLED_CLEANUP=1` to
+both `docker compose run ... tests` commands. That lane checks that initially
+disabled device components are cleaned. The test uses only ephemeral named volumes;
 `down -v` removes its broker data, Home Assistant config, owner token, and
 registry state.
 

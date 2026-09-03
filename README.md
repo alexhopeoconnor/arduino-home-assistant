@@ -3,15 +3,7 @@
 [![](https://img.shields.io/github/v/release/alexhopeoconnor/arduino-home-assistant?label=Version)](https://github.com/alexhopeoconnor/arduino-home-assistant/releases)
 [![](https://img.shields.io/badge/Documentation-40BC13)](docs/README.md)
 
-ArduinoHA is the maintained MQTT-discovery library behind compact Arduino, ESP8266, and ESP32 integrations with Home Assistant. It uses Arduino's standard network `Client` API and is continuously compile-tested on ESP8266 and ESP32. Device discovery requires Home Assistant 2024.11.0 or newer; single-component discovery remains supported.
-
-## Why use it
-
-- **Home Assistant discovery:** entities appear automatically from retained MQTT discovery payloads.
-- **Two-way entities:** report local state and receive Home Assistant commands with a small, explicit API.
-- **One physical device:** group multiple entities, metadata, shared availability, and MQTT Last Will under `HADevice`.
-- **Control the footprint:** compile out entity implementations a firmware does not use.
-- **Two discovery shapes:** start with one payload per entity or opt into a single device-discovery payload.
+ArduinoHA lets an Arduino, ESP8266, or ESP32 application publish MQTT discovery data that Home Assistant understands. Give it a connected Arduino `Client`, declare entities, and Home Assistant creates the controls and telemetry automatically.
 
 ## Start with a sensor
 
@@ -29,9 +21,7 @@ void setup() {
     WiFi.macAddress(mac);
     device.setUniqueId(mac, sizeof(mac));
 
-    WiFi.begin("SSID", "password");
-    while (WiFi.status() != WL_CONNECTED) delay(500);
-
+    // Your application connects Wi-Fi before MQTT begins.
     temperature.setName("Temperature");
     temperature.setUnitOfMeasurement("°C");
     mqtt.begin("mqtt.local", "mqtt_user", "mqtt_password");
@@ -43,7 +33,25 @@ void loop() {
 }
 ```
 
-Read [Getting started](docs/getting-started.md) before copying this into production: it explains object lifetime, MQTT lifecycle, ESP32 includes, and install routes.
+Build [ESP Sensor](examples/01-esp-sensor/) for a complete ESP8266/ESP32 project. It clearly marks the network and broker values you must provide without committing credentials.
+
+## What you can build
+
+- **Automatic Home Assistant discovery:** retained MQTT discovery messages create entities without hand-written Home Assistant YAML.
+- **Two-way controls:** sensors publish state while switches, lights, covers, and other writable entities receive explicit callbacks.
+- **One physical device:** `HADevice` groups metadata, multiple entities, shared availability, and MQTT Last Will.
+- **Device discovery:** publish one compact discovery document for a new multi-entity device, or keep traditional per-entity discovery.
+- **Small footprint:** exclude entity implementations your firmware does not use.
+
+## Choose an example
+
+| Example | Learn how to… |
+| --- | --- |
+| [ESP Sensor](examples/01-esp-sensor/) | connect an ESP application and publish changing numeric telemetry |
+| [Switch Callback](examples/02-switch-callback/) | reflect Home Assistant commands in a physical output and report state back |
+| [Multi-entity Device](examples/03-multi-entity-device/) | group controls and telemetry with shared availability and Last Will |
+| [Device Discovery](examples/04-device-discovery/) | publish one Home Assistant device-discovery document for a new device |
+| [Entity recipes](examples/README.md#entity-recipes) | find the existing focused Arduino sketches for each supported entity |
 
 ## Install
 
@@ -52,29 +60,6 @@ lib_deps =
     home-assistant-integration=https://github.com/alexhopeoconnor/arduino-home-assistant.git#v3.1.0
 ```
 
-PlatformIO clones the Git repository and checks out the ref after `#`; that ref is a release tag, not a GitHub Release asset. Arduino IDE is supported through the included [`library.properties`](library.properties); see [Getting started](docs/getting-started.md#install-the-library).
+PlatformIO clones the Git repository and checks out the ref after `#`; that ref is a release tag, not a GitHub Release asset. Arduino IDE is supported through the included [`library.properties`](library.properties).
 
-## Documentation
-
-The [documentation map](docs/README.md) is the starting point:
-
-- [Getting started](docs/getting-started.md): connection lifecycle and minimal sketches.
-- [Device and discovery](docs/device-and-discovery.md): device metadata, discovery modes, and runtime refresh.
-- [MQTT usage](docs/mqtt-usage.md): callbacks, availability, custom MQTT, logging, and footprint flags.
-- [Entity guide](docs/entities.md): supported entity types and the best matching example.
-- [Examples](examples/README.md): curated entry points and the full example index.
-
-## Development and releases
-
-```bash
-./scripts/bump-version.sh vMAJOR.MINOR.PATCH
-# Replace the generated CHANGELOG TODO with the release summary.
-./scripts/test.sh compile --platform esp8266
-./scripts/test.sh compile --platform esp32
-./scripts/check-docs.sh
-./scripts/prepare-release.sh vMAJOR.MINOR.PATCH --tag
-```
-
-The release preflight validates both package manifests and the matching changelog section. A pushed tag repeats the board-free compile checks and creates a GitHub Release from that section; it does not publish to the PlatformIO Registry or deploy firmware.
-
-See the [changelog](CHANGELOG.md) and [licence](LICENSE).
+See [getting started](docs/getting-started.md), the [documentation map](docs/README.md), [examples](examples/README.md), [release history](CHANGELOG.md), and [licence](LICENSE).

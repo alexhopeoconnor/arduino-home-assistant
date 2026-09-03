@@ -273,7 +273,7 @@ HASerializer::HASerializer(
     _deviceType(deviceType),
     _entriesNb(0),
     _maxEntriesNb(maxEntriesNb),
-    _entries(new SerializerEntry[maxEntriesNb])
+    _entries(new (std::nothrow) SerializerEntry[maxEntriesNb])
 {
 
 }
@@ -340,6 +340,10 @@ void HASerializer::topic(const __FlashStringHelper* topic)
 
 HASerializer::SerializerEntry* HASerializer::addEntry()
 {
+    if (!_entries) {
+        return nullptr;
+    }
+
     if (_entriesNb >= _maxEntriesNb) {
         if (_maxEntriesNb == UINT8_MAX) {
             return nullptr;
@@ -370,6 +374,10 @@ HASerializer::SerializerEntry* HASerializer::addEntry()
 
 uint16_t HASerializer::calculateSize() const
 {
+    if (!_entries) {
+        return 0;
+    }
+
     uint32_t size =
         strlen_P(HASerializerJsonDataPrefix) +
         strlen_P(HASerializerJsonDataSuffix);
