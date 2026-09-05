@@ -51,4 +51,3 @@ serializer preflight, migration ordering, component removal, and lifecycle
 behavior. This container suite covers Home Assistant's persistence contract. It
 does not need a physical board: fixture discovery documents mirror retained
 payloads emitted by ArduinoHA and isolate Home Assistant/MQTT compatibility.
-

@@ -38,4 +38,3 @@ git diff --stat main...upstream/develop
 Port only independently reviewed changes with regression tests; treat open
 upstream pull requests as proposals, not release inputs. Run the native,
 board-compile, and HA contract gates before publishing a new release.
-
