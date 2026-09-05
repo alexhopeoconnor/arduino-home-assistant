@@ -351,7 +351,6 @@ void test_NumberTest_object_id_setter(void) {
         number,
         (
             "{"
-            "\"obj_id\":\"testId\","
             "\"uniq_id\":\"uniqueNumber\","
             "\"dev\":{\"ids\":\"testDevice\"},"
             "\"stat_t\":\"testData/testDevice/uniqueNumber/stat_t\","
@@ -926,7 +925,7 @@ void test_NumberTest_update_min_max_step_republishes_device_discovery_when_enabl
         (
             "{"
             "\"dev\":{\"ids\":\"testDevice\"},"
-            "\"o\":{\"name\":\"ArduinoHA\",\"sw\":\"2.1.0\"},"
+            "\"o\":{\"name\":\"ArduinoHA\",\"sw\":\"3.0.2\"},"
             "\"cmps\":{"
                 "\"uniqueNumber\":{"
                     "\"p\":\"number\","

@@ -40,6 +40,11 @@ public:
     );
 
     virtual ~HABaseDeviceType();
+    HABaseDeviceType(const HABaseDeviceType&) = delete;
+    HABaseDeviceType& operator=(const HABaseDeviceType&) = delete;
+    HABaseDeviceType(HABaseDeviceType&&) = delete;
+    HABaseDeviceType& operator=(HABaseDeviceType&&) = delete;
+
 
     /**
      * Returns unique ID of the device type.
@@ -100,8 +105,12 @@ public:
         { return _defaultEntityId; }
 
     /**
-     * Legacy alias for the MQTT `object_id` discovery property.
-     * Prefer setDefaultEntityId() for new code.
+     * Legacy compatibility setter. Home Assistant no longer supports the MQTT
+     * discovery `obj_id` payload property, so this value is retained only for
+     * source compatibility and is not published.
+     *
+     * Use setDefaultEntityId("domain.entity_id") to suggest an entity ID on
+     * first discovery. It does not rename existing entities.
      *
      * @param objectId The object ID.
      */
@@ -171,12 +180,23 @@ public:
 
     /**
      * Removes this entity from MQTT discovery by publishing an empty retained
-     * payload on its config topic.
+     * payload on its config topic in single-component mode. In device
+     * discovery mode, publishes Home Assistant's required component-removal
+     * marker and updates the retained device config.
      */
     bool removeFromDiscovery();
 
     /**
+     * Returns true after this entity was removed from the retained device
+     * discovery payload and before it is republished.
+     */
+    inline bool isRemovedFromDeviceDiscovery() const
+        { return _deviceDiscoveryRemoved; }
+
+    /**
      * Republishes MQTT discovery config for this entity.
+     * In device discovery mode, this also re-adds an entity previously removed
+     * from the retained device payload.
      */
     bool republishDiscovery();
 
@@ -318,8 +338,8 @@ protected:
 
     /**
      * Adds the preferred entity ID property to the serializer.
-     * `default_entity_id` takes precedence and the legacy `object_id` is only
-     * emitted when no default entity ID was configured.
+     * Only `default_entity_id` is emitted. The legacy `obj_id` field is not
+     * supported by current Home Assistant MQTT discovery schemas.
      */
     void setEntityIdProperty(HASerializer* serializer) const;
 
@@ -371,6 +391,13 @@ protected:
     const char* _availabilityMode;
     HAAvailabilityConfig _availabilityList;
 
+    /// Tracks an entity removed from the retained device discovery payload.
+    bool _deviceDiscoveryRemoved;
+
+    static void registerAllWith(HAMqtt& mqtt);
+
+    static HABaseDeviceType* _firstInstance;
+
 private:
     enum Availability {
         AvailabilityDefault = 0,
@@ -382,7 +409,12 @@ private:
     Availability _availability;
 
     const char* effectivePayloadAvailable() const;
+    /// Intrusive list entry used to register entities created before HAMqtt.
+    HABaseDeviceType* _nextInstance;
+
     const char* effectivePayloadNotAvailable() const;
+
+    bool removeSingleComponentDiscovery();
 
     friend class HAMqtt;
     friend class HASerializer;

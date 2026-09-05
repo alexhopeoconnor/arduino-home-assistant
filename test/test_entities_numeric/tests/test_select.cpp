@@ -280,7 +280,6 @@ void test_SelectTest_object_id_setter(void) {
         select,
         (
             "{"
-            "\"obj_id\":\"testId\","
             "\"uniq_id\":\"uniqueSelect\","
             "\"options\":[\"Option A\",\"B\",\"C\"],"
             "\"dev\":{\"ids\":\"testDevice\"},"

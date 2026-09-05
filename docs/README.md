@@ -1,13 +1,12 @@
-# Documentation
-
-User-facing notes for this library. API details live in the headers under [`src/`](../src/).
+# ArduinoHA documentation
 
 | Topic | What it covers |
 | ----- | ---------------- |
-| [Getting started](getting-started.md) | Prerequisites, installing the library, minimal sketches |
-| [Device & discovery](device-and-discovery.md) | `HADevice`, MQTT connection, discovery prefixes, entity IDs |
-| [MQTT usage](mqtt-usage.md) | Callbacks, custom topics, availability, compiler flags |
-| [Entities](entities.md) | Supported Home Assistant entity classes and example selection |
-| [Examples](../examples/README.md) | Curated paths through the standalone sketches |
+| [Getting started](getting-started.md) | Connecting a `Client`, installing the library, and the first MQTT lifecycle |
+| [Device & discovery](device-and-discovery.md) | `HADevice`, discovery modes, metadata, identifiers, and migration |
+| [MQTT usage](mqtt-usage.md) | Callbacks, custom topics, availability, logging, and footprint flags |
+| [Entities](entities.md) | Supported Home Assistant entity classes and the best matching example |
+| [Examples](../examples/README.md) | Guided PlatformIO projects and focused entity recipes |
+| [Compatibility baseline](compatibility.md) | Supported Home Assistant capabilities and fork-specific compatibility notes |
 
 Class-level API details live in headers under [`src/`](../src/). Return to the [project overview](../README.md).

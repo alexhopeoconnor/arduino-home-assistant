@@ -4,6 +4,8 @@
 #include "../HAMqtt.h"
 #include "../utils/HADictionary.h"
 #include "../utils/HASerializer.h"
+#include <new>
+#include <string.h>
 
 HAText::HAText(const char* uniqueId) :
     HABaseDeviceType(AHATOFSTR(HAComponentText), uniqueId),
@@ -23,6 +25,40 @@ HAText::HAText(const char* uniqueId) :
 #endif
 {
 
+}
+
+HAText::~HAText()
+{
+    delete[] _currentState;
+}
+
+void HAText::setCurrentState(const char* state)
+{
+    setCurrentStateInternal(state);
+}
+
+bool HAText::setCurrentStateInternal(const char* state)
+{
+    if (!state) {
+        delete[] _currentState;
+        _currentState = nullptr;
+        return true;
+    }
+
+    const size_t stateLength = strlen(state);
+    if (stateLength > MaxCommandLength) {
+        return false;
+    }
+
+    char* stateCopy = new (std::nothrow) char[stateLength + 1];
+    if (!stateCopy) {
+        return false;
+    }
+
+    memcpy(stateCopy, state, stateLength + 1);
+    delete[] _currentState;
+    _currentState = stateCopy;
+    return true;
 }
 
 void HAText::setValueTemplate(const char* valueTemplate)
@@ -49,9 +85,11 @@ bool HAText::setState(const char* state, const bool force)
         return true;
     }
 
-    const bool published = publishState(state);
-    _currentState = state;
-    return published;
+    if (!setCurrentStateInternal(state)) {
+        return false;
+    }
+
+    return publishState(_currentState);
 }
 
 void HAText::buildSerializer()
@@ -222,14 +260,26 @@ void HAText::onMqttMessage(
 #endif
     ;
 
-    if (hasCommandCallback && HASerializer::compareDataTopics(
-        topic,
-        uniqueId(),
-        AHATOFSTR(HACommandTopic)
-    )) {
-        char value[length + 1];
+    if (
+        hasCommandCallback &&
+        length <= MaxCommandLength &&
+        (length == 0 || payload) &&
+        HASerializer::compareDataTopics(
+            topic,
+            uniqueId(),
+            AHATOFSTR(HACommandTopic)
+        )
+    ) {
+        char* value = new (std::nothrow) char[static_cast<size_t>(length) + 1];
+        if (!value) {
+            return;
+        }
+
         value[length] = 0;
-        memcpy(value, payload, length);
+        if (length > 0) {
+            memcpy(value, payload, length);
+        }
+
         if (_commandCallback) {
             _commandCallback(value, this);
         }
@@ -238,6 +288,8 @@ void HAText::onMqttMessage(
             _commandStdCallback(value, this);
         }
 #endif
+
+        delete[] value;
     }
 }
 

@@ -24,4 +24,14 @@ while IFS= read -r -d '' markdown; do
     done < <(sed -nE 's/.*\]\(([^ )]+)( "[^"]*")?\).*/\1/p' "$markdown")
 done < <(find "$root" -path "$root/.git" -prune -o -name '*.md' -type f -print0)
 
+while IFS= read -r example; do
+    for required in README.md platformio.ini; do
+        [[ -f "$example/$required" ]] || { echo "Incomplete guided example: ${example#$root/} is missing $required" >&2; exit 1; }
+    done
+    find "$example" -maxdepth 2 -type f \( -name '*.ino' -o -name '*.cpp' \) -print -quit | grep -q . || {
+        echo "Incomplete guided example: ${example#$root/} has no sketch source" >&2
+        exit 1
+    }
+done < <(find "$root/examples" -mindepth 1 -maxdepth 1 -type d -name '[0-9][0-9]-*' -print | sort)
+
 echo "Documentation links and required files passed"

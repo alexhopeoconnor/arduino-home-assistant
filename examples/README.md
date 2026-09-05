@@ -1,19 +1,24 @@
 # ArduinoHA examples
 
-Each directory is an Arduino sketch. Start with the network example matching your board, then pick an entity example from the table. Copy credentials into your local development configuration; do not commit them in a sketch.
+Start with a guided PlatformIO project when you are new to the library. Each one builds for ESP8266 and ESP32, contains safe placeholder credentials, and explains the Home Assistant result you should see.
 
-| Starting point | Use it for |
+```bash
+pio run -d examples/01-esp-sensor -e esp8266
+pio run -d examples/01-esp-sensor -e esp8266 -t upload
+```
+
+| Guided example | What it demonstrates |
 | --- | --- |
-| [nodemcu](nodemcu/nodemcu.ino) | Basic ESP8266 Wi-Fi and MQTT connection |
-| [nano33iot](nano33iot/nano33iot.ino) | Basic Arduino Nano 33 IoT connection |
-| [mqtt-with-credentials](mqtt-with-credentials/mqtt-with-credentials.ino) | MQTT authentication |
-| [mqtt-advanced](mqtt-advanced/mqtt-advanced.ino) | Custom MQTT subscriptions and publishing |
-| [availability](availability/availability.ino) | Per-entity availability |
-| [advanced-availability](advanced-availability/advanced-availability.ino) | Shared availability and MQTT Last Will |
+| [ESP Sensor](01-esp-sensor/) | Wi-Fi application wiring, a unique device ID, and changing numeric telemetry |
+| [Switch Callback](02-switch-callback/) | A Home Assistant command callback and local state acknowledgement |
+| [Multi-entity Device](03-multi-entity-device/) | Multiple entities, shared availability, and MQTT Last Will |
+| [Device Discovery](04-device-discovery/) | One device-discovery document for a newly deployed device |
 
-## Entity examples
+## Entity recipes
 
-| Example | Home Assistant behaviour |
+The original focused sketches remain useful as short API recipes. They are intentionally transport-specific Arduino sketches, rather than full product firmware.
+
+| Recipe | Home Assistant behaviour |
 | --- | --- |
 | [binary-sensor](binary-sensor/binary-sensor.ino) | Door/contact-style binary state |
 | [button](button/button.ino) | Press action |
@@ -33,7 +38,5 @@ Each directory is an Arduino sketch. Start with the network example matching you
 | [sensor-analog](sensor-analog/sensor-analog.ino) | Analog voltage measurement |
 | [sensor-integer](sensor-integer/sensor-integer.ino) | Integer uptime measurement |
 | [tag-scanner](tag-scanner/tag-scanner.ino) | RFID tag reporting |
-
-The examples are intentionally small, not production firmware frameworks. For reusable Wi-Fi configuration, MQTT wiring, profiles, OTA, and migrations, use [DeviceFramework](https://github.com/alexhopeoconnor/DeviceFramework) in a consuming firmware.
 
 See the [entity guide](../docs/entities.md) and [project overview](../README.md).

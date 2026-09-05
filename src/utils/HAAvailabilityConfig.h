@@ -22,6 +22,11 @@ public:
     HAAvailabilityConfig();
     ~HAAvailabilityConfig();
 
+    HAAvailabilityConfig(const HAAvailabilityConfig&) = delete;
+    HAAvailabilityConfig& operator=(const HAAvailabilityConfig&) = delete;
+    HAAvailabilityConfig(HAAvailabilityConfig&&) = delete;
+    HAAvailabilityConfig& operator=(HAAvailabilityConfig&&) = delete;
+
     /**
      * Adds an availability entry. `topic` must be a full MQTT topic string.
      * @return false when full or topic is null/empty.

@@ -25,6 +25,7 @@ class PubSubClientMock;
 
 class HADevice;
 class HABaseDeviceType;
+class HASerializer;
 
 #if defined(ARDUINO_API_VERSION)
 using namespace arduino;
@@ -68,6 +69,19 @@ public:
     };
 
     /**
+     * Explicit stages for safely migrating retained single-component discovery
+     * to Home Assistant device discovery.
+     */
+    enum DeviceDiscoveryMigrationState : uint8_t {
+        DeviceDiscoveryMigrationIdle = 0,
+        DeviceDiscoveryMigrationMarkersPending,
+        DeviceDiscoveryMigrationMarkersPublished,
+        DeviceDiscoveryMigrationDevicePublished,
+        DeviceDiscoveryMigrationCompleted,
+        DeviceDiscoveryMigrationRollbackPending
+    };
+
+    /**
      * Returns existing instance (singleton) of the HAMqtt class.
      * It may be a null pointer if the HAMqtt object was never constructed or it was destroyed.
      */
@@ -100,6 +114,11 @@ public:
      * Removes singleton of the HAMqtt class.
      */
     ~HAMqtt();
+    HAMqtt(const HAMqtt&) = delete;
+    HAMqtt& operator=(const HAMqtt&) = delete;
+    HAMqtt(HAMqtt&&) = delete;
+    HAMqtt& operator=(HAMqtt&&) = delete;
+
 
     /**
      * Sets the prefix of the Home Assistant discovery topics.
@@ -145,6 +164,59 @@ public:
      */
     inline bool isDeviceDiscoveryEnabled() const
         { return _deviceDiscoveryEnabled; }
+
+    /**
+     * Starts an explicit Home Assistant-safe migration from retained
+     * single-component discovery to device discovery.
+     *
+     * This method enables device discovery but does not publish anything. Call
+     * the subsequent migration methods after MQTT is connected, in order.
+     */
+    bool beginDeviceDiscoveryMigration();
+
+    /**
+     * Publishes retained migration markers to each legacy component config
+     * topic. The state advances only when every marker is published.
+     */
+    bool publishDeviceDiscoveryMigrationMarkers();
+
+    /**
+     * Publishes the retained device discovery config after all legacy markers
+     * have been published.
+     */
+    bool publishDeviceDiscoveryMigrationConfig();
+
+    /**
+     * Clears the retained legacy component config topics after the device
+     * config was published. The state advances only when every cleanup
+     * publish succeeds.
+     */
+    bool completeDeviceDiscoveryMigration();
+
+    /**
+     * Reverses a staged device discovery migration. A migration marker is
+     * published to the device discovery topic before legacy retained configs
+     * are restored and the device config is cleared.
+     * The method never runs automatically and returns to single-component
+     * discovery only after every required retained publish succeeds.
+     */
+    bool rollbackDeviceDiscoveryMigration();
+
+    /**
+     * Returns the current in-memory device discovery migration stage.
+     */
+    inline DeviceDiscoveryMigrationState getDeviceDiscoveryMigrationState() const
+        { return _deviceDiscoveryMigrationState; }
+
+    /**
+     * Returns true while an explicit device discovery migration awaits a
+     * marker, device config, or legacy-topic cleanup step.
+     */
+    inline bool isDeviceDiscoveryMigrationInProgress() const
+    {
+        return _deviceDiscoveryMigrationState != DeviceDiscoveryMigrationIdle &&
+            _deviceDiscoveryMigrationState != DeviceDiscoveryMigrationCompleted;
+    }
 
     /**
      * Republishes the current MQTT device discovery payload when device
@@ -348,7 +420,31 @@ public:
      * @note The HAMqtt class doesn't take ownership of the given pointer.
      * @param deviceType Instance of the device's type (HASwitch, HABinarySensor, etc.).
      */
-    void addDeviceType(HABaseDeviceType* deviceType);
+    bool addDeviceType(HABaseDeviceType* deviceType);
+
+    /**
+     * Removes a destroyed entity from the connection registry.
+     * The MQTT instance does not own entity lifetimes.
+     */
+    bool removeDeviceType(HABaseDeviceType* deviceType);
+
+    /**
+     * Number of entities currently registered for connection callbacks.
+     */
+    inline uint8_t getRegisteredDeviceTypeCount() const
+        { return _devicesTypesNb; }
+
+    /**
+     * Maximum number of entities that can be registered in this HAMqtt instance.
+     */
+    inline uint8_t getDeviceTypeLimit() const
+        { return _maxDevicesTypesNb; }
+
+    /**
+     * Number of registrations dropped because the configured entity limit was reached.
+     */
+    inline uint16_t getDeviceTypeRegistrationFailures() const
+        { return _deviceTypeRegistrationFailures; }
 
     /**
      * Publishes the MQTT message with given topic and payload.
@@ -383,7 +479,7 @@ public:
      * @param data The string to publish.
      * @param length Length of the data (bytes).
      */
-    void writePayload(const char* data, const uint16_t length);
+    bool writePayload(const char* data, const uint16_t length);
 
     /**
      * Writes given data to the TCP stream.
@@ -393,7 +489,7 @@ public:
      * @param data The data to publish.
      * @param length Length of the data (bytes).
      */
-    void writePayload(const uint8_t* data, const uint16_t length);
+    bool writePayload(const uint8_t* data, const uint16_t length);
 
     /**
      * Writes given progmem data to the TCP stream.
@@ -402,7 +498,7 @@ public:
      *
      * @param data Progmem data to publish.
      */
-    void writePayload(const __FlashStringHelper* data);
+    bool writePayload(const __FlashStringHelper* data);
 
     /**
      * Finishes publishing of a message.
@@ -512,6 +608,36 @@ private:
      */
     void onConnectedLogic();
 
+    bool publishDeviceDiscoveryPayload(HABaseDeviceType* removalType = nullptr);
+
+    HASerializer* buildDeviceDiscoveryComponentSerializer(
+        HABaseDeviceType* deviceType,
+        HABaseDeviceType* removalType
+    );
+
+    bool clearDeviceDiscoveryConfig();
+
+    bool publishDeviceDiscoveryMigrationMarker(HABaseDeviceType* deviceType);
+
+    /**
+     * Marks the retained device discovery config for Home Assistant's reverse
+     * migration protocol before restoring legacy component configs.
+     */
+    bool publishDeviceDiscoveryMigrationMarker();
+
+    /**
+     * Removes a component from a device discovery payload using Home
+     * Assistant's required platform-only marker, followed by a compacted
+     * bundle when another component remains.
+     */
+    bool removeDeviceDiscoveryComponent(HABaseDeviceType* deviceType);
+
+    /**
+     * Re-adds (or refreshes) a component in the current device discovery
+     * payload.
+     */
+    bool republishDeviceDiscoveryComponent(HABaseDeviceType* deviceType);
+
     /**
      * Sets the state of the MQTT connection.
      */
@@ -567,6 +693,15 @@ private:
      */
     String formatDirectPublishFailureDiagnostics(bool hamqttConnectedBefore, int pubsubStateBefore) const;
 
+    // Buffer direct MQTT streaming writes so serializers do not issue hundreds
+    // of tiny TCP writes while a PubSubClient publish is open.
+    static const uint16_t DirectPublishBufferSize = 128;
+    bool flushDirectPublishBuffer();
+    bool appendDirectPublishPayload(const uint8_t* data, uint16_t length);
+    bool appendDirectPublishProgmemPayload(const __FlashStringHelper* src);
+    void clearDirectPublishBuffer();
+    void abortDirectPublish();
+
 #ifdef ARDUINOHA_TEST
     PubSubClientMock* _mqtt;
 #else
@@ -576,6 +711,10 @@ private:
     /// Pointer to the active MQTT client implementation.
     PubSubClient* _mqtt;
 #endif
+
+    uint8_t _directPublishBuffer[DirectPublishBufferSize];
+    uint16_t _directPublishBufferLength;
+    bool _directPublishActive;
 
     /// Instance of the HADevice passed to the constructor.
     const HADevice& _device;
@@ -604,6 +743,9 @@ private:
     /// Enables MQTT device discovery mode when set to true.
     bool _deviceDiscoveryEnabled;
 
+    /// Current in-memory stage of an explicit device discovery migration.
+    DeviceDiscoveryMigrationState _deviceDiscoveryMigrationState;
+
     const char* _originSupportUrl;
 
     /// The username used for the authentication. It's set in the HAMqtt::begin method.
@@ -629,6 +771,9 @@ private:
 
     /// The last will topic set by HAMqtt::setLastWill
     const char* _lastWillTopic;
+
+    /// Count of entity registrations rejected because the configured cap was full.
+    uint16_t _deviceTypeRegistrationFailures;
 
     /// The last will message set by HAMqtt::setLastWill
     const char* _lastWillMessage;
@@ -659,6 +804,8 @@ private:
     bool _deferredFlushFailedForTest = false;
     uint8_t _lastDeferredFlushErrorForTest = 0;
 #endif
+
+    friend class HABaseDeviceType;
 };
 
 #endif

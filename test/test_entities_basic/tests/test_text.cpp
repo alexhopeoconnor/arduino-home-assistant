@@ -51,6 +51,14 @@ void onCommandDeferredPublish(const char* value, HAText* caller)
     TEST_ASSERT_TRUE(caller->setState(value));
 }
 
+void onCommandSetStateAndOverwrite(const char* value, HAText* caller)
+{
+    TEST_ASSERT_TRUE(caller->setState(value));
+    char* mutableValue = const_cast<char*>(value);
+    mutableValue[0] = 'x';
+    TEST_ASSERT_EQUAL_STRING("hello", caller->getCurrentState());
+}
+
 void test_TextTest_invalid_unique_id(void) {
     prepareTest
 
@@ -178,7 +186,6 @@ void test_TextTest_object_id_setter(void) {
         text,
         (
             "{"
-            "\"obj_id\":\"testId\","
             "\"uniq_id\":\"uniqueText\","
             "\"dev\":{\"ids\":\"testDevice\"},"
             "\"stat_t\":\"testData/testDevice/uniqueText/stat_t\","
@@ -318,6 +325,32 @@ void test_TextTest_publish_state_debounce(void) {
     TEST_ASSERT_EQUAL(0, mock->getFlushedMessagesNb());
 }
 
+void test_TextTest_current_state_is_owned(void) {
+    prepareTest
+
+    HAText text(testUniqueId);
+    char state[] = "initial";
+    text.setCurrentState(state);
+    state[0] = 'x';
+
+    TEST_ASSERT_EQUAL_STRING("initial", text.getCurrentState());
+}
+
+void test_TextTest_oversized_state_is_rejected(void) {
+    prepareTest
+
+    HAText text(testUniqueId);
+    text.setCurrentState("initial");
+    char state[HAText::MaxCommandLength + 2];
+    memset(state, 'x', sizeof(state) - 1);
+    state[sizeof(state) - 1] = 0;
+
+    text.setCurrentState(state);
+    TEST_ASSERT_EQUAL_STRING("initial", text.getCurrentState());
+    TEST_ASSERT_FALSE(text.setState(state));
+    TEST_ASSERT_EQUAL_STRING("initial", text.getCurrentState());
+}
+
 void test_TextTest_command_callback(void) {
     prepareTest
 
@@ -341,6 +374,32 @@ void test_TextTest_callback_publish_is_deferred_until_after_dispatch(void) {
     TEST_ASSERT_EQUAL_UINT16(1, mqtt.getDeferredPublishEnqueueCountForTest());
     TEST_ASSERT_EQUAL_UINT8(1, mock->getFlushedMessagesNb());
     AHA_ASSERT_MQTT_MESSAGE(mock, 0, AHATOFSTR(StateTopic), "hello", true);
+}
+
+void test_TextTest_callback_state_is_owned_after_dispatch(void) {
+    prepareTest
+
+    mock->connectDummy();
+    HAText text(testUniqueId);
+    text.onCommand(onCommandSetStateAndOverwrite);
+
+    mock->fakeMessage(AHATOFSTR(CommandTopic), F("hello"));
+
+    TEST_ASSERT_EQUAL_STRING("hello", text.getCurrentState());
+}
+
+void test_TextTest_oversized_command_is_ignored(void) {
+    prepareTest
+
+    HAText text(testUniqueId);
+    text.onCommand(onCommandReceived);
+    char command[HAText::MaxCommandLength + 2];
+    memset(command, 'x', sizeof(command) - 1);
+    command[sizeof(command) - 1] = 0;
+
+    mock->fakeMessage(AHATOFSTR(CommandTopic), command);
+
+    assertCommandCallbackNotCalled()
 }
 
 void test_TextTest_different_text_command(void) {
