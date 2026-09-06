@@ -10,11 +10,13 @@ import json
 import os
 import pathlib
 import time
-import uuid
 
-import paho.mqtt.client as mqtt
-import requests
-import websocket
+from ha_mqtt_contract import (
+    ContractError,
+    HomeAssistantClient,
+    RetainedPublisher as SharedRetainedPublisher,
+    wait_until,
+)
 
 
 HA_URL = os.environ.get("HA_URL", "http://homeassistant:8123").rstrip("/")
@@ -28,201 +30,8 @@ EDGE_DEVICE_ID = "contract_edge_device"
 EXPECT_DISABLED_CLEANUP = os.environ.get("CONTRACT_EXPECT_DISABLED_CLEANUP") == "1"
 
 
-class ContractFailure(RuntimeError):
-    pass
-
-
 def fail(message):
-    raise ContractFailure(message)
-
-
-def wait_until(description, predicate, timeout=90, interval=1):
-    deadline = time.monotonic() + timeout
-    last_error = None
-    while time.monotonic() < deadline:
-        try:
-            result = predicate()
-            if result:
-                return result
-        except Exception as error:  # HA is expected to be starting initially.
-            last_error = error
-        time.sleep(interval)
-    suffix = f" (last error: {last_error})" if last_error else ""
-    fail(f"timed out waiting for {description}{suffix}")
-
-
-def wait_for_home_assistant():
-    def ready():
-        response = requests.get(f"{HA_URL}/api/", timeout=5)
-        return response.status_code in (200, 401)
-
-    wait_until("Home Assistant HTTP API", ready, timeout=180)
-
-
-def response_json(response, context):
-    if not response.ok:
-        fail(f"{context} failed ({response.status_code}): {response.text}")
-    try:
-        return response.json()
-    except ValueError as error:
-        fail(f"{context} returned invalid JSON: {error}")
-
-
-def onboarding_token():
-    """Create an ephemeral owner token once and share it across restart checks."""
-    if TOKEN_FILE.exists():
-        return TOKEN_FILE.read_text(encoding="utf-8").strip()
-
-    client_id = "http://contract-tests.local/"
-    user = {
-        "client_id": client_id,
-        "name": "Contract Test Owner",
-        "username": "contract-owner",
-        "password": "contract-test-password",
-        "language": "en",
-    }
-    response = requests.post(f"{HA_URL}/api/onboarding/users", json=user, timeout=10)
-    created = response_json(response, "Home Assistant onboarding user creation")
-    auth_code = created.get("auth_code")
-    if not auth_code:
-        fail("Home Assistant onboarding did not return an auth_code")
-
-    token_response = requests.post(
-        f"{HA_URL}/auth/token",
-        data={
-            "client_id": client_id,
-            "grant_type": "authorization_code",
-            "code": auth_code,
-        },
-        timeout=10,
-    )
-    token = response_json(token_response, "Home Assistant token exchange").get("access_token")
-    if not token:
-        fail("Home Assistant token exchange did not return an access_token")
-
-    headers = {"Authorization": f"Bearer {token}"}
-    # These operations are idempotent across HA versions that still expose them.
-    for path, payload in (
-        ("/api/onboarding/core_config", {}),
-        ("/api/onboarding/analytics", {"preferences": {}}),
-    ):
-        response = requests.post(f"{HA_URL}{path}", headers=headers, json=payload, timeout=10)
-        if response.status_code not in (200, 201, 400, 404):
-            fail(f"Home Assistant onboarding step {path} failed: {response.status_code} {response.text}")
-
-    STATE.mkdir(parents=True, exist_ok=True)
-    TOKEN_FILE.write_text(token, encoding="utf-8")
-    return token
-
-
-class HAWebSocket:
-    def __init__(self, token):
-        scheme = "wss" if HA_URL.startswith("https://") else "ws"
-        address = HA_URL.split("://", 1)[1]
-        self._socket = websocket.create_connection(f"{scheme}://{address}/api/websocket", timeout=15)
-        required = json.loads(self._socket.recv())
-        if required.get("type") != "auth_required":
-            fail(f"unexpected Home Assistant WebSocket greeting: {required}")
-        self._socket.send(json.dumps({"type": "auth", "access_token": token}))
-        authenticated = json.loads(self._socket.recv())
-        if authenticated.get("type") != "auth_ok":
-            fail(f"Home Assistant WebSocket authentication failed: {authenticated}")
-        self._next_id = 1
-
-    def close(self):
-        self._socket.close()
-
-    def call(self, message_type, **kwargs):
-        message_id = self._next_id
-        self._next_id += 1
-        self._socket.send(json.dumps({"id": message_id, "type": message_type, **kwargs}))
-        while True:
-            result = json.loads(self._socket.recv())
-            if result.get("id") != message_id:
-                continue
-            if not result.get("success"):
-                fail(f"WebSocket {message_type} failed: {result}")
-            return result.get("result")
-
-    def registry_entries(self):
-        return self.call("config/entity_registry/list")
-
-
-def configure_mqtt_integration(token):
-    """Create HA's MQTT config entry; broker YAML options are no longer accepted."""
-    headers = {"Authorization": f"Bearer {token}"}
-    response = requests.post(
-        f"{HA_URL}/api/config/config_entries/flow",
-        headers=headers,
-        json={"handler": "mqtt"},
-        timeout=15,
-    )
-    flow = response_json(response, "MQTT config-entry flow creation")
-    if flow.get("type") == "create_entry":
-        return
-    if flow.get("type") != "form" or not flow.get("flow_id"):
-        fail(f"unexpected MQTT config-entry flow result: {flow}")
-
-    user_input = {"broker": MQTT_HOST, "port": MQTT_PORT}
-    # Newer HA versions group TLS/transport values in a required section.
-    # Older supported versions do not expose the section and must not receive
-    # unknown fields, so negotiate from the returned data schema.
-    schema_names = {
-        field.get("name")
-        for field in flow.get("data_schema", [])
-        if isinstance(field, dict)
-    }
-    if "other_settings" in schema_names:
-        user_input["other_settings"] = {
-            "set_client_cert": False,
-            "set_ca_cert": "off",
-            "transport": "tcp",
-        }
-
-    response = requests.post(
-        f"{HA_URL}/api/config/config_entries/flow/{flow['flow_id']}",
-        headers=headers,
-        json=user_input,
-        timeout=15,
-    )
-    configured = response_json(response, "MQTT config-entry flow configuration")
-    if configured.get("type") != "create_entry":
-        fail(f"MQTT config-entry flow did not create an entry: {configured}")
-
-    # The successful flow result is returned before the integration has had a
-    # chance to subscribe to retained discovery topics.
-    time.sleep(3)
-
-
-class RetainedPublisher:
-    def __init__(self):
-        self._client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id=f"contract-{uuid.uuid4()}")
-        self._client.connect(MQTT_HOST, MQTT_PORT, keepalive=15)
-        self._client.loop_start()
-
-    def close(self):
-        self._client.loop_stop()
-        self._client.disconnect()
-
-    def publish(self, topic, payload):
-        info = self._client.publish(topic, payload, qos=1, retain=True)
-        info.wait_for_publish(timeout=10)
-        if not info.is_published():
-            fail(f"MQTT publish timed out for {topic}")
-
-    def retained_payload(self, topic):
-        received = []
-
-        def on_message(_client, _userdata, message):
-            if message.topic == topic:
-                received.append(message.payload.decode("utf-8"))
-
-        self._client.on_message = on_message
-        self._client.subscribe(topic, qos=1)
-        value = wait_until(f"retained MQTT message {topic}", lambda: received[0] if received else None)
-        self._client.unsubscribe(topic)
-        self._client.on_message = None
-        return value
+    raise ContractError(message)
 
 
 def legacy_topic(object_id, device_id=DEVICE_ID):
@@ -275,10 +84,15 @@ def wait_for_entry(ws, unique_id):
 
 
 def migration_contract():
-    publisher = RetainedPublisher()
-    token = onboarding_token()
-    configure_mqtt_integration(token)
-    ws = HAWebSocket(token)
+    publisher = SharedRetainedPublisher(MQTT_HOST, MQTT_PORT)
+    ws = HomeAssistantClient.bootstrap(
+        HA_URL,
+        STATE,
+        owner_name="ArduinoHA Contract Owner",
+        username="arduinoha-contract",
+        password="arduinoha-contract-password",
+    )
+    ws.configure_mqtt(MQTT_HOST, MQTT_PORT)
     try:
         # Existing single-component entity and a user-owned registry customization.
         unique = f"{DEVICE_ID}_temperature"
@@ -437,9 +251,8 @@ def migration_contract():
 def retained_restart_contract():
     if not (STATE / "migration-complete").exists():
         fail("retained-restart mode requires the migration contract to run first")
-    publisher = RetainedPublisher()
-    token = onboarding_token()
-    ws = HAWebSocket(token)
+    publisher = SharedRetainedPublisher(MQTT_HOST, MQTT_PORT)
+    ws = HomeAssistantClient.from_state(HA_URL, STATE)
     try:
         migrated = wait_for_entry(ws, f"{DEVICE_ID}_temperature")
         if migrated["entity_id"] != "sensor.contract_temperature_user_name":
@@ -453,7 +266,7 @@ def retained_restart_contract():
 
 
 def main():
-    wait_for_home_assistant()
+    HomeAssistantClient.wait_until_ready(HA_URL)
     if MODE == "migration":
         migration_contract()
     elif MODE == "retained-restart":

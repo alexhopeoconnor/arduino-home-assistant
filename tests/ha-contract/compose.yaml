@@ -23,7 +23,8 @@ services:
 
   tests:
     build:
-      context: .
+      context: ../..
+      dockerfile: tests/ha-contract/Dockerfile
     environment:
       HA_URL: http://homeassistant:8123
       MQTT_HOST: mqtt

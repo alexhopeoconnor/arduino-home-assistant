@@ -44,6 +44,10 @@ disabled device components are cleaned. The test uses only ephemeral named volum
 `down -v` removes its broker data, Home Assistant config, owner token, and
 registry state.
 
+## Shared support
+
+The schema-neutral [HA/MQTT contract testkit](../../test-support/ha-mqtt-contract/README.md) owns only Docker-side Home Assistant onboarding, MQTT transport, registry/service access, retries, and artifact helpers. It has no ArduinoHA discovery assertions. This suite owns ArduinoHA migration fixtures; DeviceFramework carries its own fixtures and hardware adapter while reusing the testkit.
+
 ## Scope
 
 The firmware's native Unity suite covers JSON escaping, invalid topic tokens,
